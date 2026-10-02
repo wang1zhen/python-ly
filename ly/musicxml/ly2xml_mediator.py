@@ -42,6 +42,7 @@ class Mediator():
         """ create global lists """
         self.score = xml_objs.Score()
         self.sections = []
+        self.part_sections = []
         """ default and initial values """
         self.insert_into = None
         self.current_note = None
@@ -127,7 +128,7 @@ class Mediator():
         return name
 
     def get_var_byname(self, name):
-        for n in self.sections:
+        for n in self.sections + self.part_sections:
             if n.name == name:
                 return n
 
@@ -286,7 +287,8 @@ class Mediator():
                 self.part.merge_voice(self.sections[-1])
             else:
                 self.part.barlist.extend(self.sections[-1].barlist)
-                self.sections.pop()
+                # still findable by name, e.g. for \lyricsto
+                self.part_sections.append(self.sections.pop())
         if self.part and self.part.to_part:
             self.part.merge_part_to_part()
         self.part.merge_voice(self.score.glob_section)

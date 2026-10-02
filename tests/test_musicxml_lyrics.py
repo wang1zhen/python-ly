@@ -84,7 +84,6 @@ def test_lyrics_skip():
     assert texts(root) == [['a'], [], ['b'], ['c']]
 
 
-@xfail
 def test_lyricsto_voice_inside_staff():
     root = convert(r"""\score { <<
   \new Staff \new Voice = "mel" { c'4 d' e' f' }
@@ -133,7 +132,6 @@ def test_underscore_is_a_melisma_syllable():
     assert texts(root) == [['a'], [], ['b'], ['c']]
 
 
-@xfail
 def test_lyrics_for_two_voices_in_two_staves():
     root = convert(r"""\score { <<
   \new Staff \new Voice = "s" { e''2 f'' }

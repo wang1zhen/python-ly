@@ -76,6 +76,7 @@ class ParseSource():
         self.numericTime = False
         self.voice_sep = False
         self.sims_and_seqs = []
+        self.voice_parts = []
         self.override_dict = {}
         self.ottava = False
         self.with_contxt = None
@@ -235,6 +236,11 @@ class ParseSource():
             self.mediator.add_staff_id(context_id)
         elif context == 'Voice':
             self.sims_and_seqs.append('voice')
+            # a Voice outside any Staff gets a part of its own, as LilyPond
+            # creates a Staff for it
+            self.voice_parts.append(self.mediator.part is None)
+            if self.voice_parts[-1]:
+                self.mediator.new_part()
             if context_id:
                 self.mediator.new_section(context_id)
             else:
@@ -654,7 +660,10 @@ class ParseSource():
         elif isinstance(end.node, ly.music.items.Context):
             self.in_context = False
             if end.node.context() == 'Voice':
-                self.mediator.check_voices()
+                if self.voice_parts.pop():
+                    self.mediator.check_part()
+                else:
+                    self.mediator.check_voices()
                 self.sims_and_seqs.pop()
             elif end.node.context() in group_contexts:
                 self.mediator.close_group()
@@ -766,7 +775,7 @@ class ParseSource():
         for n in doc:
             if not isinstance(n, ly.music.items.Assignment):
                 if isinstance(n, ly.music.items.Music):
-                    return self.iter_score(n, doc)
+                    return self.iter_score([n], doc)
 
     def look_ahead(self, node, find_node):
         """Looks ahead in a container node and returns True

@@ -62,6 +62,7 @@ CORPUS = {
     'drums_rhythms': r"""\new DrumStaff \drummode { bd4. sn8 \tuplet 3/2 { bd8 sn sn } r4 | cymc2~ cymc2 }""",
     'drums_chords': r"""\new DrumStaff \drummode { <bd hh>4 <sn hh>8 <sn hh> <bd hh>2 }""",
     'drums_grace_artic': r"""\drums { \grace sn16 bd4-> sn-. sn\p sn }""",
+    'voices_in_staff_group': r"""\score { \new StaffGroup << \new Voice = "S" { \set Staff.instrumentName = #"Cantus" c''2 d'' } \addlyrics { Du tout } \new Voice = "B" { \set Staff.instrumentName = #"Bassus" c2 g, } \addlyrics { plon giet } >> }""",
 }
 
 # known bugs outside the planned improvements
