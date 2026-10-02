@@ -50,7 +50,7 @@ class CreateMusicXML():
 
     def __init__(self):
         """Creates the basic structure of the XML without any music."""
-        self.root = etree.Element("score-partwise", version="3.0")
+        self.root = etree.Element("score-partwise", version="4.0")
         self.tree = etree.ElementTree(self.root)
         self.score_info = etree.SubElement(self.root, "identification")
         encoding = etree.SubElement(self.score_info, "encoding")
@@ -731,5 +731,5 @@ def get_tag_index(node, tag):
 
 xml_decl_txt = """<?xml version="1.0" encoding="{encoding}"?>"""
 
-doctype_txt = """<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 2.0 Partwise//EN"
+doctype_txt = """<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.0 Partwise//EN"
                                 "http://www.musicxml.org/dtds/partwise.dtd">"""

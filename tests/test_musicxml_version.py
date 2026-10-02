@@ -11,8 +11,6 @@ import ly.musicxml
 from .musicxml_corpus import CORPUS, corpus_params
 from .musicxml_helpers import TESTS_DIR, XSD_4_0, convert, validate
 
-xfail = pytest.mark.xfail(strict=True, reason="export is MusicXML 3.0")
-
 LY_FILES = sorted(glob.glob(os.path.join(TESTS_DIR, 'test_xml_files', '*.ly')))
 
 
@@ -24,12 +22,10 @@ def write(ly_text):
     return f.getvalue().decode('utf-8')
 
 
-@xfail
 def test_version_attribute():
     assert convert("{ c'1 }").get('version') == '4.0'
 
 
-@xfail
 def test_doctype():
     text = write("{ c'1 }")
     assert '"-//Recordare//DTD MusicXML 4.0 Partwise//EN"' in text

@@ -12,8 +12,7 @@ import ly.musicxml
 
 
 TESTS_DIR = os.path.dirname(__file__)
-XSD_3_0 = os.path.join(TESTS_DIR, 'musicxml.xsd')
-XSD_4_0 = os.path.join(TESTS_DIR, 'musicxml-4.0', 'musicxml.xsd')
+XSD_4_0 = os.path.join(TESTS_DIR, 'musicxml.xsd')
 
 _schemas = {}
 
@@ -25,7 +24,7 @@ def convert(ly_text):
     return etree.fromstring(writer.musicxml().tostring())
 
 
-def validate(root, xsd=XSD_3_0):
+def validate(root, xsd=XSD_4_0):
     """Raise etree.DocumentInvalid if root is not valid against xsd."""
     if xsd not in _schemas:
         _schemas[xsd] = etree.XMLSchema(etree.parse(xsd))
