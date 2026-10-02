@@ -74,6 +74,8 @@ class Mediator():
         self.lyric_nr = 1
         self.ongoing_wedge = False
         self.ongoing_dashes = False
+        self.after_empty_chord = False
+        self.dynamics_onnext = []
         self.octdiff = 0
         self.prev_tremolo = 8
         self.tupl_dur = 0
@@ -338,6 +340,10 @@ class Mediator():
         self.bar.add(obj)
 
     def create_barline(self, bl):
+        # Barlines are written at the right side of a measure, so a barline
+        # before any music in the part has no place and is left out.
+        if self.bar is None:
+            return
         barline = xml_objs.BarAttr()
         barline.set_barline(bl)
         self.bar.add(barline)
@@ -457,7 +463,11 @@ class Mediator():
             self.copy_prev_chord(note.duration)
         else:
             if not is_unpitched:
-                note.pitch = self.current_lynote.pitch
+                if self.current_lynote:
+                    note.pitch = self.current_lynote.pitch
+                else:
+                    # like LilyPond, use c' if there is no previous pitch
+                    note.pitch = ly.pitch.Pitch(octave=1)
             self.new_note(note, rel, is_unpitched)
 
     def create_unpitched(self, unpitched):
@@ -511,6 +521,10 @@ class Mediator():
                 else:
                     self.staff_unset_notes[self.staff] = [self.current_note]
         self.add_to_bar(self.current_note)
+        self.after_empty_chord = False
+        for dynamics in self.dynamics_onnext:
+            self.set_dynamics(dynamics)
+        self.dynamics_onnext = []
 
     def stem_direction(self, direction):
         if direction == '\\stemUp':
@@ -744,7 +758,18 @@ class Mediator():
             elif ret:
                 self.current_note.add_articulation(ret)
 
+    def empty_chord(self):
+        """An empty chord <>, its dynamics belong to the next note or rest."""
+        self.after_empty_chord = True
+
     def new_dynamics(self, dynamics):
+        if self.after_empty_chord:
+            self.dynamics_onnext.append(dynamics)
+        else:
+            self.set_dynamics(dynamics)
+
+    def set_dynamics(self, dynamics):
+        """Set the dynamics on the current note."""
         hairpins = {'<': 'crescendo', '>': 'diminuendo'}
         text_dyn = {'cresc': 'cresc.', 'decresc': 'descresc.',
                     'dim': 'dim.'}
@@ -1114,7 +1139,7 @@ def calc_trem_dur(repeats, base_scaling, duration):
         trem_length = ly.duration.tostring(int((repeats // duration) * -0.5))
     else:
         trem_length = str(duration // repeats)
-    new_type = xml_objs.durval2type(trem_length)
+    new_type = durval2type(trem_length)
     return (new_base, scale), new_type
 
 def get_line_style(style):

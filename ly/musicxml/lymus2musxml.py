@@ -142,13 +142,11 @@ class ParseSource():
                 # print(m)
                 func_name = m.__class__.__name__ #get instance name
                 if func_name not in excl_list:
-                    try:
-                        func_call = getattr(self, func_name)
+                    func_call = getattr(self, func_name, None)
+                    if func_call:
                         func_call(m)
-                    except AttributeError as ae:
+                    else:
                         print("Warning:", func_name, "not implemented!")
-                        print(ae)
-                        pass
         else:
             print("Warning! Couldn't parse source!")
 
@@ -200,6 +198,8 @@ class ParseSource():
 
     def Chord(self, chord):
         self.mediator.clear_chord()
+        if not len(chord):
+            self.mediator.empty_chord()
 
     def Q(self, q):
         self.mediator.copy_prev_chord(q.duration)
@@ -297,8 +297,12 @@ class ParseSource():
                     self.mediator.new_chord_grace()
 
     def Unpitched(self, unpitched):
-        """A note without pitch, just a standalone duration."""
-        if unpitched.length():
+        """A note without pitch, just a standalone duration.
+
+        In FigureMode it is a bass figure, which is not supported.
+
+        """
+        if unpitched.length() and self.alt_mode != 'figure':
             if self.alt_mode == 'drum':
                 self.mediator.new_iso_dura(unpitched, self.relative, True)
             else:
@@ -472,6 +476,8 @@ class ParseSource():
                     self.mediator.unset_tuplspan_dur()
                 return
             val = cont_set.value().get_string()
+        elif isinstance(cont_set.value(), ly.music.items.Markup):
+            val = cont_set.value().plaintext()
         else:
             val = cont_set.value().value()
         if cont_set.context() in part_contexts:
@@ -532,7 +538,10 @@ class ParseSource():
         pass
 
     def MarkupWord(self, markupWord):
-        self.mediator.new_word(markupWord.token)
+        # markup assigned to a property or a header field is read as a whole
+        # by Assignment or Set
+        if not self.look_behind(markupWord, (ly.music.items.Assignment, ly.music.items.Set)):
+            self.mediator.new_word(markupWord.token)
 
     def MarkupList(self, markuplist):
         pass
@@ -586,8 +595,14 @@ class ParseSource():
         self.override_key = ''
 
     def PathItem(self, item):
-        r"""An item in the path of an \override or \revert command."""
-        self.override_key += item.token
+        r"""An item in the path of an \override, \revert or \tweak command.
+
+        Only the path of an \override is collected, \revert and \tweak are
+        not supported.
+
+        """
+        if isinstance(item.parent(), ly.music.items.Override):
+            self.override_key += item.token
 
     def Scheme(self, scheme):
         """A Scheme expression inside LilyPond."""

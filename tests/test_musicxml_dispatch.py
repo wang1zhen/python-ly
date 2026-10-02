@@ -1,16 +1,11 @@
 """Dispatching of ly.music nodes to their handlers in ly.musicxml."""
-import sys
-
 import pytest
 
 from ly.musicxml.lymus2musxml import ParseSource
 
 from .musicxml_helpers import convert, pitches
 
-xfail_dispatch = pytest.mark.xfail(strict=True, reason="error hidden by broad exception handling")
 
-
-@pytest.mark.xfail(strict=True, reason="AttributeError inside handlers is swallowed")
 def test_attribute_error_in_handler_propagates(monkeypatch):
     def broken(self, rest):
         raise AttributeError('broken handler')
@@ -57,9 +52,7 @@ def test_snippet_converts(ly_text):
 MORE_SNIPPETS = [
     r"{ <>\p c'4 d' e' f' }",
     r"{ \tuplet 3/2 { c'8 d' e' } \times 2/3 { f'4 g' a' } }",
-    pytest.param(r"{ \tuplet 3/2 { c'8 \tuplet 3/2 { d'16 e' f' } g'8 } r2. }",
-                 marks=pytest.mark.xfail(sys.version_info >= (3, 12), strict=True,
-                                         reason="truth value of an Element is tested")),
+    r"{ \tuplet 3/2 { c'8 \tuplet 3/2 { d'16 e' f' } g'8 } r2. }",
     r"{ \grace c'16 d'4 \acciaccatura e'8 f'4 \appoggiatura g'8 a'4 }",
     r"{ c'4:16 d'2:32 e'4 }",
     r"\new RhythmicStaff { 4 4 8 8 4 }",
@@ -81,13 +74,11 @@ def test_snippet_converts_without_warnings(ly_text):
     convert(ly_text)
 
 
-@xfail_dispatch
 def test_dynamic_on_empty_chord():
     root = convert(r"{ <>\p c'4 d' e' f' }")
     assert root.find('part/measure/direction/direction-type/dynamics/p') is not None
 
 
-@xfail_dispatch
 def test_instrument_name_from_markup():
     root = convert(r"{ \set Staff.instrumentName = \markup { Violin } c'1 }")
     assert root.findtext('part-list/score-part/part-name') == 'Violin'
@@ -95,7 +86,6 @@ def test_instrument_name_from_markup():
     assert root.find('.//words') is None
 
 
-@xfail_dispatch
 def test_tremolo_repeat():
     root = convert(r"{ \repeat tremolo 4 { c'16 e' } c'2 }")
     n = root.findall('part/measure/note')
@@ -103,7 +93,6 @@ def test_tremolo_repeat():
     assert [x.find('notations/ornaments/tremolo').get('type') for x in n[:2]] == ['start', 'stop']
 
 
-@xfail_dispatch
 def test_rhythmic_staff():
     root = convert(r"\new RhythmicStaff { 4 4 8 8 4 }")
     assert len(root.findall('part/measure/note')) == 5

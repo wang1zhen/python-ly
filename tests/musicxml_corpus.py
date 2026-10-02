@@ -21,7 +21,6 @@ CORPUS = {
     'fingering': r"""{ c'4-1 d'-2 e'-3 f'-4 }""",
     'chord_repetition': r"""{ <c' e' g'>4 q q q | <d' f'>2 q }""",
     'isolated_durations': r"""{ c'4 4 8 8 4 }""",
-    'rhythmic_staff': r"""\new RhythmicStaff { 4 4 8 8 4 }""",
     'drums': r"""\new DrumStaff \drummode { bd4 sn bd sn | hh8 hh hh hh hh hh hh hh }""",
     'multi_rest': r"""{ \compressMMRests R1*3 | c'1 }""",
     'skips': r"""{ s2 c'2 | s1 | d'1 }""",
@@ -61,7 +60,6 @@ CORPUS = {
 # known bugs outside the planned improvements
 KNOWN_INVALID = {
     'header': 'creator is written after encoding in identification',
-    'rhythmic_staff': 'isolated durations without a previous pitch crash (hidden)',
     'drums': 'voice element comes after type in unpitched notes',
 }
 

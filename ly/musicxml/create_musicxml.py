@@ -185,7 +185,7 @@ class CreateMusicXML():
         from fractions import Fraction
         self.mult = Fraction(fraction[1], fraction[0])
         timemod_node = self.get_time_modify()
-        if timemod_node:
+        if timemod_node is not None:
             self.adjust_time_modify(timemod_node, fraction)
         else:
             self.add_time_modify(fraction)
