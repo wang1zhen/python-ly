@@ -29,6 +29,8 @@ is captured.
 from __future__ import unicode_literals
 from __future__ import print_function
 
+from fractions import Fraction
+
 import ly.document
 import ly.music
 
@@ -172,7 +174,7 @@ class ParseSource():
     def musicxml(self, prettyprint=True):
         self.mediator.check_score()
         xml_objs.IterateXmlObjs(
-            self.mediator.score, self.musxml, self.mediator.divisions)
+            self.mediator.score, self.musxml)
         xml = self.musxml.musicxml(prettyprint)
         return xml
 
@@ -373,7 +375,6 @@ class ParseSource():
                     self.mediator.change_to_tuplet(td['fraction'], td['ttype'],
                                                 td['nr'])
                 td['ttype'] = ""
-            self.mediator.check_divs()
 
     def Duration(self, duration):
         """A written duration"""
@@ -410,6 +411,7 @@ class ParseSource():
             self.scale = 'R'
         self.mediator.new_rest(rest)
         self.note_node = rest
+        self.check_tuplet()
 
     def Skip(self, skip):
         r""" invisible rest/spacer rest (s or command \skip)"""
@@ -418,6 +420,7 @@ class ParseSource():
         else:
             self.mediator.new_rest(skip)
             self.note_node = skip
+            self.check_tuplet()
 
     def Scaler(self, scaler):
         r"""
@@ -426,7 +429,8 @@ class ParseSource():
         """
         if scaler.token == '\\scaleDurations':
             ttype = ""
-            fraction = (scaler.denominator, scaler.numerator)
+            scaling = Fraction(scaler.scaling)
+            fraction = (scaling.denominator, scaling.numerator)
         elif scaler.token == '\\times':
             ttype = "start"
             fraction = (scaler.denominator, scaler.numerator)

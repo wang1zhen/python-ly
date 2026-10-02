@@ -187,16 +187,8 @@ class CreateMusicXML():
             for i in range(dot):
                 self.add_dot()
 
-    def tuplet_note(self, fraction, bs, ttype, nr, divs, atyp='', ntyp=''):
+    def tuplet_note(self, fraction, ttype, nr, atyp='', ntyp=''):
         """Convert current note to tuplet """
-        base = self.mult * bs[0]
-        scaling = bs[1]
-        a = divs*4*fraction[1]
-        b = (1/base)*fraction[0]
-        duration = (a/b)*scaling
-        self.change_div_duration(duration)
-        from fractions import Fraction
-        self.mult = Fraction(fraction[1], fraction[0])
         timemod_node = self.get_time_modify()
         if timemod_node is not None:
             self.adjust_time_modify(timemod_node, fraction)
@@ -367,13 +359,8 @@ class CreateMusicXML():
 
     def add_div_duration(self, divdur):
         """Create new duration """
-        self.duration = etree.SubElement(self.current_note, "duration")
-        self.duration.text = str(divdur)
-        self.mult = 1
-
-    def change_div_duration(self, newdura):
-        """Set new duration when tuplet """
-        self.duration.text = str(newdura)
+        duration = etree.SubElement(self.current_note, "duration")
+        duration.text = str(divdur)
 
     def add_duration_type(self, durtype):
         """Create new type """

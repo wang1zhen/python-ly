@@ -55,7 +55,6 @@ class Mediator():
         self.simultaneous = []
         self.note_tail = None
         self.action_onnext = []
-        self.divisions = 1
         self.dur_token = "4"
         self.dur_tokens = ()
         self.dots = 0
@@ -509,7 +508,6 @@ class Mediator():
             for n in notes:
                 n.set_duration((value, Fraction(1)), durtype)
                 n.dot = dots
-            self.divisions *= (value * scaling * 4 * self.divisions).denominator
         return notes
 
     def continue_notes(self, notes):
@@ -601,7 +599,6 @@ class Mediator():
                 self.tied = False
         self.note_tail = self.current_note
         self.check_duration(rest)
-        self.check_divs()
         if self.staff:
             self.current_note.set_staff(self.staff)
             if self.store_unset_staff:
@@ -786,7 +783,7 @@ class Mediator():
         if self.tupl_dur:
             if self.tupl_sum == 0:
                 ttype = "start"
-            base, scaling = self.current_lynote.duration
+            base, scaling = self.current_note.duration
             self.tupl_sum += (1 / tuplscaling) * base * scaling
             if self.tupl_sum == self.tupl_dur:
                 ttype = "stop"
@@ -1067,33 +1064,6 @@ class Mediator():
                 rs = int(t[1:])
         return (dots, rs)
 
-    def check_divs(self):
-        """ The new duration is checked against current divisions """
-        base = self.current_note.duration[0]
-        scaling = self.current_note.duration[1]
-        divs = self.divisions
-        tupl = self.current_note.tuplet
-        if not tupl:
-            a = 4
-            if base:
-                b = 1/base
-            else:
-                b = 1
-                print("Warning problem checking duration!")
-        else:
-            num = 1
-            den = 1
-            for t in tupl:
-                num *= t.fraction[0]
-                den *= t.fraction[1]
-            a = 4*den
-            b = (1/base)*num
-        c = a * divs * scaling
-        predur, mod = divmod(c, b)
-        if mod > 0:
-            mult = get_mult(a, b)
-            self.divisions = divs*mult
-
     def add_break(self):
         if self.bar is None:
             self.new_bar()
@@ -1216,10 +1186,6 @@ def note_values(length):
         values.append((value, dots, durval2type(ly.duration.tostring(log))))
         length -= value
     return values
-
-def get_mult(num, den):
-    simple = Fraction(num, den)
-    return simple.denominator
 
 def get_voice(c):
     voices = ["voiceOne", "voiceTwo", "voiceThree", "voiceFour"]

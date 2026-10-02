@@ -1,6 +1,7 @@
 """The <divisions> value in the MusicXML export."""
 import pytest
 
+
 from .musicxml_helpers import convert, divisions, notes, validate
 
 xfail = pytest.mark.xfail(strict=True, reason="divisions are not minimal")
@@ -34,7 +35,6 @@ def test_triplets():
     assert durations(root) == [2, 2, 2, 6]
 
 
-@xfail
 def test_nested_tuplets():
     root = convert(r"{ \tuplet 3/2 { c'8 \tuplet 3/2 { d'16 e' f' } g'8 } r2. }")
     assert divisions(root) == 9
@@ -42,27 +42,23 @@ def test_nested_tuplets():
     validate(root)
 
 
-@xfail
 def test_triplet_and_sixteenth():
     root = convert(r"{ \tuplet 3/2 { c'8 c' c' } c'16 c' c'8 c'2 }")
     assert divisions(root) == 12
     assert durations(root) == [4, 4, 4, 3, 3, 6, 24]
 
 
-@xfail
 def test_quintuplet_and_triplet():
     root = convert(r"{ \tuplet 5/4 { c'16 c' c' c' c' } \tuplet 3/2 { c'8 c' c' } c'2 }")
     assert divisions(root) == 15
     assert durations(root) == [3, 3, 3, 3, 3, 5, 5, 5, 30]
 
 
-@xfail
 def test_grace_notes_do_not_affect_divisions():
     root = convert(r"{ \grace { c'32 } d'4 e' f' g' }")
     assert divisions(root) == 1
 
 
-@xfail
 def test_scale_durations():
     root = convert(r"{ \scaleDurations 2/3 { c'4 c' c' } c'2 }")
     assert divisions(root) == 3
@@ -81,7 +77,6 @@ def test_dotted_eighth_and_sixteenth():
     assert durations(root) == [3, 1, 4, 8]
 
 
-@xfail
 def test_rests_in_tuplets():
     root = convert(r"{ \tuplet 3/2 { c'8 r c' } c'4 c'2 }")
     assert divisions(root) == 3
@@ -99,7 +94,6 @@ def test_divisions_are_the_same_for_all_parts():
     validate(root)
 
 
-@xfail
 def test_backup_after_tuplets():
     root = convert(r"\new Staff << { \tuplet 3/2 { c''4 c'' c'' } c''2 } \\ { c'1 } >>")
     assert divisions(root) == 3
@@ -119,7 +113,6 @@ def test_multi_measure_rest_duration():
     assert durations(root)[-1] == 4
 
 
-@xfail
 def test_scale_durations_without_tuplet_bracket():
     root = convert(r"{ \scaleDurations 2/3 { c'4 c' c' } c'2 }")
     assert root.find('.//tuplet') is None
