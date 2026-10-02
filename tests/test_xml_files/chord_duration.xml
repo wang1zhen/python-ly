@@ -52,8 +52,6 @@
         <voice>1</voice>
         <type>whole</type>
       </note>
-    </measure>
-    <measure number="3">
       <note>
         <chord />
         <pitch>
@@ -74,6 +72,8 @@
         <voice>1</voice>
         <type>whole</type>
       </note>
+    </measure>
+    <measure number="3">
       <note>
         <pitch>
           <step>E</step>

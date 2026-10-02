@@ -130,9 +130,12 @@ class CreateMusicXML():
 
     def create_measure(self, pickup = False, **bar_attrs):
         """Create new measure """
-        if pickup and self.bar_nr == 1:
+        implicit = pickup and self.bar_nr == 1
+        if implicit:
             self.bar_nr = 0
         self.current_bar = etree.SubElement(self.current_part, "measure", number=str(self.bar_nr))
+        if implicit:
+            self.current_bar.set('implicit', 'yes')
         self.bar_nr +=1
         if bar_attrs:
             self.new_bar_attr(**bar_attrs)
@@ -388,8 +391,9 @@ class CreateMusicXML():
 
     def add_tie(self, tie_type):
         """Create node tie (used for sound of tie) """
-        # A tie must be directly after a duration
-        insert_at = get_tag_index(self.current_note, "duration") + 1
+        # A tie must be directly after a duration (or a previous tie)
+        insert_at = (get_tag_index(self.current_note, "duration") + 1
+                     + len(self.current_note.findall("tie")))
         tie_element = etree.Element("tie", type=tie_type)
         self.current_note.insert(insert_at, tie_element)
 

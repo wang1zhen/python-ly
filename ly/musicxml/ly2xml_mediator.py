@@ -49,7 +49,11 @@ class Mediator():
         self.current_lynote = None
         self.current_is_rest = False
         self.current_time = Fraction(4, 4)
-        self.bar_dura = Fraction(0, 4)
+        self.moment = Fraction(0)
+        self.time_changes = {Fraction(0): Fraction(1)}
+        self.partials = {}
+        self.simultaneous = []
+        self.note_tail = None
         self.action_onnext = []
         self.divisions = 1
         self.dur_token = "4"
@@ -85,7 +89,6 @@ class Mediator():
         self.multiple_rest = False
         self.multiple_rest_bar = None
         self.current_mark = 1
-        self.bar_is_pickup = False
         self.stem_dir = None
 
     def new_header_assignment(self, name, value):
@@ -230,8 +233,10 @@ class Mediator():
         snippet = self.get_var_byname(snippet_name)
         continue_barlist(snippet.merge_barlist)
         for bb in snippet.barlist:
-            for b in bb.obj_list:
-                self.bar.add(b)
+            # skip the empty bar started at the end of the snippet
+            if len(bb.obj_list) > 1 or bb.obj_list[0].has_attr():
+                for b in bb.obj_list:
+                    self.bar.add(b)
             if bb.list_full:
                 self.new_bar()
 
@@ -322,17 +327,61 @@ class Mediator():
         if self.sections:
             return self.sections[0].barlist
 
-    def set_pickup(self):
-        self.bar_is_pickup = True
+    def set_pickup(self, length):
+        self.partials[self.moment] = length
+        if self.bar is None:
+            self.new_bar()
+        self.bar.pickup = not self.moment
+
+    def measure_grid(self, moment):
+        """Return the start of the time signature or \\partial in effect at
+        moment, the measure length and the first barline after the start."""
+        start = max(m for m in self.grid_changes() if m <= moment)
+        length = self.time_changes[max(m for m in self.time_changes if m <= moment)]
+        return start, length, start + self.partials.get(start, length)
+
+    def grid_changes(self):
+        """Return the moments where the barlines are laid out anew."""
+        return set(self.time_changes) | set(self.partials)
+
+    def next_barline(self, moment):
+        """Return the moment of the first barline after moment."""
+        start, length, barline = self.measure_grid(moment)
+        if barline <= moment:
+            barline += ((moment - barline) // length + 1) * length
+        return min([barline] + [m for m in self.grid_changes() if m > moment])
+
+    def is_barline(self, moment):
+        """Return True if there is a barline at moment."""
+        start, length, barline = self.measure_grid(moment)
+        return moment == start or moment >= barline and (moment - barline) % length == 0
+
+    def bar_check(self):
+        if not self.is_barline(self.moment):
+            print("Warning: bar check failed at", self.moment)
+
+    def new_simultaneous(self):
+        """Store the start of a simultaneous expression (<< >>)."""
+        self.simultaneous.append([self.moment, self.moment])
+
+    def next_simultaneous(self):
+        """A part of a simultaneous expression is parsed: the next one
+        starts again at the start."""
+        sim = self.simultaneous[-1]
+        sim[1] = max(sim[1], self.moment)
+        self.moment = sim[0]
+
+    def end_simultaneous(self):
+        """A simultaneous expression ends with its longest part."""
+        self.moment = max(self.simultaneous.pop()[1], self.moment)
 
     def new_bar(self, fill_prev=True):
         if self.bar and fill_prev:
             self.bar.list_full = True
         self.current_attr = xml_objs.BarAttr()
         self.bar = xml_objs.Bar()
-        if self.bar_is_pickup:
+        if not self.moment and 0 in self.partials:
             self.bar.pickup = True
-            self.bar_is_pickup = False
         self.bar.obj_list = [self.current_attr]
         self.insert_into.barlist.append(self.bar)
 
@@ -408,7 +457,8 @@ class Mediator():
 
     def new_time(self, num, den, numeric=False):
         self.current_time = Fraction(num, den.denominator)
-        if self.bar is None:
+        self.time_changes[self.moment] = self.current_time
+        if self.bar is None or self.bar.has_music():
             self.new_bar()
         self.current_attr.set_time([num, den.denominator], numeric)
 
@@ -429,11 +479,48 @@ class Mediator():
     def set_relative(self, note):
         self.prev_pitch = note.pitch
 
-    def increase_bar_dura(self, duration):
-        self.bar_dura += duration[0] * duration[1]
-        if self.bar_dura >= self.current_time:
-            self.bar_dura = 0
+    def end_note(self):
+        """The current note, rest or chord is complete: move the moment
+        to its end. A note that crosses a barline is split and tied over it,
+        and a new bar is started at the barline."""
+        notes = self.current_chord or [self.current_note]
+        end = self.moment + notes[0].length()
+        barline = self.next_barline(self.moment)
+        if end > barline:
+            while end > barline:
+                notes = self.set_length(notes, barline - self.moment)
+                self.moment = barline
+                self.new_bar()
+                notes = self.continue_notes(notes)
+                barline = self.next_barline(barline)
+            notes = self.set_length(notes, end - self.moment)
+        self.moment = end
+        if end == barline:
             self.new_bar()
+        self.note_tail = notes[0]
+
+    def set_length(self, notes, length):
+        """Give the notes (of a note or chord) the length, tying more notes
+        to them when one note value is not enough. Return the last notes."""
+        scaling = notes[0].tuplet_scaling()
+        for i, (value, dots, durtype) in enumerate(note_values(length / scaling)):
+            if i:
+                notes = self.continue_notes(notes)
+            for n in notes:
+                n.set_duration((value, Fraction(1)), durtype)
+                n.dot = dots
+            self.divisions *= (value * scaling * 4 * self.divisions).denominator
+        return notes
+
+    def continue_notes(self, notes):
+        """Add and return the continuations of the notes of a note or chord."""
+        conts = [n.continuation() for n in notes]
+        for c in conts[1:]:
+            # the notes of a chord share their ties, see new_chordnote
+            c.tie = conts[0].tie
+        for c in conts:
+            self.bar.add(c)
+        return conts
 
     def new_note(self, note, rel=False, is_unpitched=False):
         self.current_is_rest = False
@@ -449,7 +536,6 @@ class Mediator():
             self.current_note.set_stem_direction(self.stem_dir)
         self.do_action_onnext(self.current_note)
         self.action_onnext = []
-        self.increase_bar_dura(note.duration)
 
     def new_iso_dura(self, note, rel=False, is_unpitched=False):
         """
@@ -513,6 +599,7 @@ class Mediator():
             if self.tied:
                 self.current_note.set_tie('stop')
                 self.tied = False
+        self.note_tail = self.current_note
         self.check_duration(rest)
         self.check_divs()
         if self.staff:
@@ -581,7 +668,6 @@ class Mediator():
         self.current_note.set_duration(duration)
         self.current_lynote = note
         self.check_current_note(rel)
-        self.increase_bar_dura(duration)
 
     def new_chordnote(self, note, rel):
         chord_note = self.create_barnote_from_note(note)
@@ -613,7 +699,6 @@ class Mediator():
         else:
             self.current_note = chord_note = xml_objs.Unpitched(duration)
             self.check_current_note(is_unpitched=True)
-            self.increase_bar_dura(duration)
         self.current_chord.append(chord_note)
         self.do_action_onnext(chord_note)
 
@@ -634,7 +719,6 @@ class Mediator():
                 cn.set_tie('stop')
             self.bar.add(cn)
         self.tied = False
-        self.increase_bar_dura(duration)
 
     def clear_chord(self):
         self.q_chord = self.current_chord
@@ -659,7 +743,6 @@ class Mediator():
         elif rtype == 's' or rtype == '\\skip':
             self.current_note = xml_objs.BarRest(dur, self.voice, skip=True)
         self.check_current_note(rest=True)
-        self.increase_bar_dura(dur)
 
     def note2rest(self):
         """Note used as rest position transformed to rest."""
@@ -692,6 +775,7 @@ class Mediator():
         sk = self.current_note.skip
         multp = int(bs[1] * (bs[0]/self.current_time))
         for i in range(1, int(multp)):
+            self.moment += dur[0] * dur[1]
             self.new_bar()
             rest_copy = xml_objs.BarRest(dur, voice=voc, show_type=st, skip=sk)
             self.add_to_bar(rest_copy)
@@ -714,7 +798,7 @@ class Mediator():
             self.current_note.set_tuplet(tfraction, ttype, nr)
 
     def change_tuplet_type(self, index, newtype):
-        self.current_note.tuplet[index].ttype = newtype
+        self.note_tail.tuplet[index].ttype = newtype
 
     def set_tuplspan_dur(self, token=None, tokens=None, fraction=None):
         """
@@ -741,7 +825,7 @@ class Mediator():
     def tie_to_next(self):
         tie_type = 'start'
         self.tied = True
-        self.current_note.set_tie(tie_type)
+        self.note_tail.set_tie(tie_type)
 
     def set_slur(self, nr, slur_type, phrasing=False):
         """
@@ -1111,6 +1195,27 @@ def clefname2clef(clefname):
     except KeyError:
         clef = 0
     return clef
+
+def note_values(length):
+    """Split a length (in whole notes) into the values of plain or dotted
+    notes, as (value, dots, type) tuples."""
+    values = []
+    while length:
+        log, base = 0, Fraction(1)
+        while base > length:
+            log, base = log + 1, base / 2
+        while log > -3 and base * 2 <= length:
+            log, base = log - 1, base * 2
+        value, dots = base, 0
+        if length.denominator & (length.denominator - 1):
+            # not a sum of note values, e.g. in a 4:3 tuplet
+            value = length
+        while value + base / 2 ** (dots + 1) <= length:
+            dots += 1
+            value += base / 2 ** dots
+        values.append((value, dots, durval2type(ly.duration.tostring(log))))
+        length -= value
+    return values
 
 def get_mult(num, den):
     simple = Fraction(num, den)

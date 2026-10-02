@@ -51,6 +51,7 @@ Example::
 from __future__ import unicode_literals
 from __future__ import print_function
 
+import copy
 from fractions import Fraction
 
 class IterateXmlObjs():
@@ -350,7 +351,8 @@ class ScoreSection():
         ext = False
         for bar in self.barlist:
             for obj in bar.obj_list:
-                if isinstance(obj, BarNote):
+                # a note tied to the previous one gets no syllable
+                if isinstance(obj, BarNote) and 'stop' not in obj.tie:
                     if ext:
                         if obj.slur:
                             ext = False
@@ -590,6 +592,28 @@ class BarMus():
     def set_tuplet(self, fraction, ttype, nr, acttype='', normtype=''):
         self.tuplet.append(Tuplet(fraction, ttype, nr, acttype, normtype))
 
+    def tuplet_scaling(self):
+        """Return the factor by which the tuplets scale the duration."""
+        scaling = Fraction(1)
+        for t in self.tuplet:
+            scaling *= Fraction(t.fraction[1], t.fraction[0])
+        return scaling
+
+    def length(self):
+        """Return the time taken, in whole notes."""
+        return self.duration[0] * self.duration[1] * self.tuplet_scaling()
+
+    def continuation(self):
+        """Return a copy that continues this note or rest (e.g. after a
+        barline), without the markings belonging to the start of it."""
+        cont = copy.copy(self)
+        cont.tuplet = [Tuplet(t.fraction, '', t.nr, t.acttype, t.normtype)
+                       for t in self.tuplet]
+        cont.other_notation = None
+        cont.dynamic = []
+        cont.oct_shift = None
+        return cont
+
     def set_staff(self, staff):
         self.staff = staff
 
@@ -701,6 +725,26 @@ class BarNote(BarMus):
         self.fingering = None
         self.lyric = None
         self.stem_direction = None
+
+    def length(self):
+        if self.grace[0]:
+            return 0
+        return BarMus.length(self)
+
+    def continuation(self):
+        """The continuation of a note is tied to it."""
+        cont = BarMus.continuation(self)
+        # the tie list can be shared by the notes of a chord
+        self.tie = self.tie + ['start']
+        cont.tie = ['stop']
+        cont.accidental_token = ''
+        cont.slur = []
+        cont.artic = []
+        cont.ornament = None
+        cont.adv_ornament = None
+        cont.gliss = None
+        cont.fingering = None
+        return cont
 
     def set_duration(self, duration, durtype=''):
         self.duration = duration

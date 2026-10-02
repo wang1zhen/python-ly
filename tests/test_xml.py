@@ -46,7 +46,6 @@ def test_mark():
     compare_output('mark')
 
 
-@pytest.mark.xfail
 def test_partial():
     compare_output('partial')
 
