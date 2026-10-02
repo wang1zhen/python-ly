@@ -43,7 +43,6 @@ class Mediator():
         """ create global lists """
         self.score = xml_objs.Score()
         self.sections = []
-        self.part_sections = []
         """ default and initial values """
         self.insert_into = None
         self.current_note = None
@@ -73,7 +72,10 @@ class Mediator():
         self.staff_id_dict = {}
         self.store_unset_staff = False
         self.staff_unset_notes = {}
-        self.lyric_sections = {}
+        self.notes = []
+        self.voice_starts = {}
+        self.voice_notes = {}
+        self.lyric_sections = []
         self.lyric = None
         self.lyric_syll = False
         self.lyric_nr = 1
@@ -123,8 +125,21 @@ class Mediator():
     def new_lyric_section(self, name, voice_id):
         name = self.check_name(name)
         lyrics = xml_objs.LyricsSection(name, voice_id)
+        # each lyrics section of a voice is a new stanza
+        self.lyric_nr = 1 + sum(l.voice_id == voice_id for l in self.lyric_sections)
+        self.lyric = None
+        self.lyric_syll = False
         self.insert_into = lyrics
-        self.lyric_sections[name] = lyrics
+        self.lyric_sections.append(lyrics)
+
+    def new_lyrics_voice(self, voice):
+        """Start collecting the notes of a voice lyrics can refer to."""
+        self.voice_starts[voice] = len(self.notes)
+
+    def end_lyrics_voice(self, voice):
+        """Stop collecting the notes of the voice."""
+        start = self.voice_starts.pop(voice)
+        self.voice_notes.setdefault(voice, []).extend(self.notes[start:])
 
     def check_name(self, name, nr=1):
         n = self.get_var_byname(name)
@@ -134,7 +149,7 @@ class Mediator():
         return name
 
     def get_var_byname(self, name):
-        for n in self.sections + self.part_sections:
+        for n in self.sections:
             if n.name == name:
                 return n
 
@@ -280,12 +295,10 @@ class Mediator():
         the referenced voice."""
         if self.lyric[1] == 'middle':
             self.lyric[1] = 'end'
-        lyrics_section = self.lyric_sections['lyricsto'+voice_id]
-        voice_section = self.get_var_byname(lyrics_section.voice_id)
-        if voice_section:
-            voice_section.merge_lyrics(lyrics_section)
+        if voice_id in self.voice_notes:
+            self.lyric_sections[-1].attach_to(self.voice_notes[voice_id])
         else:
-            print("Warning can't merge in lyrics!", voice_section)
+            print("Warning can't merge in lyrics!", voice_id)
 
     def check_part(self):
         """Adds the latest active section to the part."""
@@ -296,8 +309,7 @@ class Mediator():
                 self.part.merge_voice(self.sections[-1])
             else:
                 self.part.barlist.extend(self.sections[-1].barlist)
-                # still findable by name, e.g. for \lyricsto
-                self.part_sections.append(self.sections.pop())
+                self.sections.pop()
         if self.part and self.part.to_part:
             self.part.merge_part_to_part()
         self.part.merge_voice(self.score.glob_section)
@@ -606,6 +618,7 @@ class Mediator():
             if self.tied:
                 self.current_note.set_tie('stop')
                 self.tied = False
+            self.notes.append(self.current_note)
         self.note_tail = self.current_note
         self.check_duration(rest)
         if self.staff:
@@ -1095,7 +1108,7 @@ class Mediator():
                 self.lyric_syll = True
         elif item == '__':
             self.lyric.append("extend")
-        elif item == '\\skip':
+        elif item in ('\\skip', '_'):
             self.insert_into.barlist.append("skip")
 
     def duration_from_tokens(self, tokens):

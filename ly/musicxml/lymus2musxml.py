@@ -29,6 +29,7 @@ is captured.
 from __future__ import unicode_literals
 from __future__ import print_function
 
+import itertools
 from fractions import Fraction
 
 import ly.document
@@ -62,6 +63,20 @@ class End():
 
     def __repr__(self):
         return '<{0} {1}>'.format(self.__class__.__name__, self.node)
+
+
+class LyricsVoice():
+    r""" Extra class that marks the start of music that is followed by
+    \addlyrics expressions in the node list. """
+    def __init__(self, node):
+        self.node = node
+
+    def __repr__(self):
+        return '<{0} {1}>'.format(self.__class__.__name__, self.node)
+
+
+def is_addlyrics(node):
+    return isinstance(node, ly.music.items.LyricMode) and node.token == '\\addlyrics'
 
 
 class ParseSource():
@@ -269,6 +284,7 @@ class ParseSource():
                 self.mediator.new_part()
             if context_id:
                 self.mediator.new_section(context_id)
+                self.mediator.new_lyrics_voice(context_id)
             else:
                 self.mediator.new_section('voice')
         elif context == 'Devnull':
@@ -276,6 +292,8 @@ class ParseSource():
         elif context == 'ChordNames':
             self.mediator.new_part(context_id, chord_names=True)
             self.chord_names = True
+        elif context == 'Lyrics':
+            pass # the lyrics are attached to their voice by \lyricsto
         else:
             print("Context not implemented:", context)
 
@@ -667,6 +685,16 @@ class ParseSource():
     def LyricMode(self, lyricmode):
         r"""A \lyricmode, \lyrics or \addlyrics expression."""
         self.alt_mode = 'lyric'
+        if is_addlyrics(lyricmode):
+            music = self.addlyrics_music(lyricmode)
+            if not is_addlyrics(lyricmode.previous_sibling()):
+                self.mediator.end_lyrics_voice(music)
+            self.mediator.new_lyric_section('addlyrics', music)
+            self.sims_and_seqs.append('lyrics')
+
+    def LyricsVoice(self, voice):
+        r"""Start of music that is followed by \addlyrics."""
+        self.mediator.new_lyrics_voice(voice.node)
 
     def Override(self, override):
         r"""An \override command."""
@@ -727,6 +755,8 @@ class ParseSource():
         elif isinstance(end.node, ly.music.items.Context):
             self.in_context = False
             if end.node.context() == 'Voice':
+                if end.node.context_id():
+                    self.mediator.end_lyrics_voice(end.node.context_id())
                 if self.voice_parts.pop():
                     self.mediator.check_part()
                 else:
@@ -768,6 +798,9 @@ class ParseSource():
         elif end.node.token == '\\lyricsto':
             self.mediator.check_lyrics(end.node.context_id())
             self.sims_and_seqs.pop()
+        elif is_addlyrics(end.node):
+            self.mediator.check_lyrics(self.addlyrics_music(end.node))
+            self.sims_and_seqs.pop()
         elif end.node.token == '\\with':
             self.with_contxt = None
         elif end.node.token == '\\drums':
@@ -808,6 +841,13 @@ class ParseSource():
         if i + 1 < len(parent):
             return parent[i+1]
 
+    def addlyrics_music(self, addlyrics):
+        r"""Returns the music node an \addlyrics node refers to."""
+        node = addlyrics.previous_sibling()
+        while is_addlyrics(node):
+            node = node.previous_sibling()
+        return node
+
     def simple_node_gen(self, node):
         """Unlike iter_score are the subnodes yielded without substitution."""
         for n in node:
@@ -836,7 +876,13 @@ class ParseSource():
 
         Furthermore \repeat unfold expressions are unfolded.
         """
-        for s in scorenode:
+        return self.iter_nodes(scorenode, doc)
+
+    def iter_nodes(self, nodes, doc):
+        """Iter over the nodes and their children, see iter_score."""
+        for s in nodes:
+            if is_addlyrics(s.next_sibling()) and not is_addlyrics(s):
+                yield LyricsVoice(s)
             if isinstance(s, ly.music.items.Repeat) and s.specifier() == 'unfold':
                 for u in self.unfold_repeat(s, s.repeat_count(), doc):
                     yield u
@@ -859,12 +905,19 @@ class ParseSource():
                     yield c
 
     def find_score_sub(self, doc):
-        """Find substitute for scorenode. Takes first music node that isn't
-        an assignment."""
+        r"""Find substitute for scorenode. Takes first music node that isn't
+        an assignment, and the \addlyrics expressions following it."""
         for n in doc:
             if not isinstance(n, ly.music.items.Assignment):
                 if isinstance(n, ly.music.items.Music):
-                    return self.iter_score([n], doc)
+                    lyrics = []
+                    node = n.next_sibling()
+                    while is_addlyrics(node):
+                        lyrics.append(node)
+                        node = node.next_sibling()
+                    voice = [LyricsVoice(n)] if lyrics else []
+                    return itertools.chain(voice, self.iter_score([n], doc),
+                                           self.iter_nodes(lyrics, doc))
 
     def look_ahead(self, node, find_node):
         """Looks ahead in a container node and returns True

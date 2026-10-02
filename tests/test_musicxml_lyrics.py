@@ -32,7 +32,6 @@ def test_syllables_hyphen_and_extender():
     validate(root)
 
 
-@xfail
 def test_lyrics_context_is_known(capsys):
     convert(r"""\score { <<
   \new Voice = "mel" { c'4 d' }
@@ -41,7 +40,6 @@ def test_lyrics_context_is_known(capsys):
     assert 'not implemented' not in capsys.readouterr().out
 
 
-@xfail
 def test_stanzas_are_numbered():
     root = convert(r"""\score { <<
   \new Voice = "mel" { c'4 d' }
@@ -55,19 +53,16 @@ def test_stanzas_are_numbered():
     validate(root)
 
 
-@xfail
 def test_addlyrics():
     root = convert(r"{ c'4 d' e'2 } \addlyrics { a b c }")
     assert texts(root) == [['a'], ['b'], ['c']]
 
 
-@xfail
 def test_addlyrics_twice():
     root = convert(r"{ c'2 d' } \addlyrics { a b } \addlyrics { x y }")
     assert texts(root) == [['a', 'x'], ['b', 'y']]
 
 
-@xfail
 def test_melisma_on_slur_and_tie():
     root = convert(r"""\score { <<
   \new Voice = "mel" { c'4( d') e' f'~ f'1 }
@@ -101,7 +96,6 @@ def test_rests_get_no_syllable():
     assert texts(root) == [['a'], [], ['b'], ['c']]
 
 
-@xfail
 def test_chord_gets_one_syllable():
     root = convert(r"""\score { <<
   \new Voice = "mel" { <c' e'>4 d' e'2 }
@@ -123,7 +117,6 @@ def test_extender_over_slur():
     ]
 
 
-@xfail
 def test_underscore_is_a_melisma_syllable():
     root = convert(r"""\score { <<
   \new Voice = "mel" { c'4 d' e' f' }
@@ -144,13 +137,11 @@ def test_lyrics_for_two_voices_in_two_staves():
     validate(root)
 
 
-@xfail
 def test_addlyrics_after_staff():
     root = convert(r"\new Staff { c'4 d' e'2 } \addlyrics { x y z }")
     assert texts(root) == [['x'], ['y'], ['z']]
 
 
-@xfail
 def test_stanzas_with_hyphens():
     root = convert(r"""\score { <<
   \new Voice = "mel" { c'4 d' e' f' }
