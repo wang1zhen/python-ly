@@ -6,7 +6,6 @@ from .musicxml_helpers import convert, measure_lengths, measures, notes, parts, 
 xfail = pytest.mark.xfail(strict=True, reason=r"\partCombine is not implemented")
 
 
-@xfail
 @pytest.mark.parametrize('command', [r'\partCombine', r'\partcombine'])
 def test_part_combine_two_voices(command):
     root = convert(r"\new Staff %s { c''4 d'' e'' f'' } { a'4 b' c'' d'' }" % command)
@@ -18,7 +17,6 @@ def test_part_combine_two_voices(command):
     validate(root)
 
 
-@xfail
 def test_part_combine_several_measures():
     root = convert(r"\new Staff \partCombine { c''1 d''2 e'' } { a'2 b' c''1 }")
     assert measure_lengths(root) == [4, 4]
@@ -26,7 +24,6 @@ def test_part_combine_several_measures():
     assert pitches(root, voice=2) == ['A4', 'B4', 'C5']
 
 
-@xfail
 def test_part_combine_with_variables():
     root = convert(r"""
 up = { e''2 f'' }
@@ -37,7 +34,6 @@ down = { c''2 d'' }
     assert pitches(root, voice=2) == ['C5', 'D5']
 
 
-@xfail
 def test_part_combine_followed_by_music():
     root = convert(r"\new Staff { \partCombine { c''1 } { a'1 } d''1 }")
     m = measures(root)
@@ -46,7 +42,6 @@ def test_part_combine_followed_by_music():
     assert m[1].find('backup') is None
 
 
-@xfail
 def test_part_combine_next_to_other_staff():
     root = convert(r"""\score { <<
   \new Staff \partCombine { c''2 d'' } { a'2 b' }
@@ -59,7 +54,6 @@ def test_part_combine_next_to_other_staff():
     validate(root)
 
 
-@xfail
 def test_part_combine_relative():
     root = convert(r"\new Staff \partCombine \relative c'' { c4 d e f } \relative c' { a4 b c d }")
     assert pitches(root, voice=1) == ['C5', 'D5', 'E5', 'F5']
@@ -67,7 +61,6 @@ def test_part_combine_relative():
     assert pitches(root, voice=2) == ['A3', 'B3', 'C4', 'D4']
 
 
-@xfail
 def test_part_combine_with_rests_and_ties():
     root = convert(r"\new Staff \partCombine { c''2~ c''4 r } { r4 a'2. }")
     assert pitches(root, voice=1) == ['C5', 'C5', 'r']
@@ -76,7 +69,6 @@ def test_part_combine_with_rests_and_ties():
     validate(root)
 
 
-@xfail
 def test_part_combine_in_piano_staff():
     root = convert(r"""\score { \new PianoStaff <<
   \new Staff \partCombine { e''1 } { c''1 }

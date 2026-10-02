@@ -300,6 +300,10 @@ class ParseSource():
         else:
             print("Context not implemented:", context)
 
+    def PartCombine(self, partcombine):
+        r"""A \partCombine expression, rendered as << music1 \\ music2 >>."""
+        self.mediator.new_snippet('sim-snip')
+
     def VoiceSeparator(self, voice_sep):
         self.mediator.new_snippet('sim')
         self.mediator.set_voicenr(add=True)
@@ -801,6 +805,9 @@ class ParseSource():
             self.alt_mode = None
             if end.node.token == '\\chords':
                 self.end_chord_names()
+        elif isinstance(end.node, ly.music.items.PartCombine):
+            self.mediator.check_voices_by_nr()
+            self.mediator.revert_voicenr()
         elif end.node.token == '<<':
             self.mediator.end_simultaneous()
             if self.voice_sep:
@@ -897,13 +904,17 @@ class ParseSource():
 
         Similarly to items.Document.iter_music user commands are substituted.
 
-        Furthermore \repeat unfold and \repeat percent expressions are unfolded.
+        Furthermore \repeat unfold and \repeat percent expressions are
+        unfolded, and the two arguments of \partCombine are separated by a
+        voice separator.
         """
         return self.iter_nodes(scorenode, doc)
 
     def iter_nodes(self, nodes, doc):
         """Iter over the nodes and their children, see iter_score."""
-        for s in nodes:
+        for i, s in enumerate(nodes):
+            if i == 1 and isinstance(nodes, ly.music.items.PartCombine):
+                yield ly.music.items.VoiceSeparator()
             if is_addlyrics(s.next_sibling()) and not is_addlyrics(s):
                 yield LyricsVoice(s)
             n = doc.substitute_for_node(s) or s
