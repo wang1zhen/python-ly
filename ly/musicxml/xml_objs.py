@@ -152,8 +152,7 @@ class IterateXmlObjs():
 
     def before_note(self, obj):
         """Xml-nodes before note."""
-        if obj.harmony:
-            h = obj.harmony
+        for h in obj.harmonies:
             offset = self.count_duration(h.offset)
             self.musxml.add_harmony(h.root, h.root_alter, h.kind, h.bass,
                                     h.degrees, offset)
@@ -264,7 +263,8 @@ class Score():
 
     def divisions(self):
         """Return the smallest number of divisions per quarter note
-        that gives every note, rest and backup an integer duration.
+        that gives every note, rest and backup an integer duration, and
+        every chord name offset an integer offset.
 
         Grace notes have no duration and are not counted.
         """
@@ -273,13 +273,15 @@ class Score():
             for bar in part.barlist:
                 for obj in bar.obj_list:
                     if isinstance(obj, BarBackup):
-                        length = obj.length
+                        lengths = [obj.length]
                     elif isinstance(obj, BarMus) and not obj.grace[0]:
-                        length = obj.length()
+                        lengths = [obj.length()]
+                        lengths += [h.offset for h in obj.harmonies]
                     else:
                         continue
-                    den = (length * 4).denominator
-                    divs = divs * den // gcd(divs, den)
+                    for length in lengths:
+                        den = (length * 4).denominator
+                        divs = divs * den // gcd(divs, den)
         return divs
 
     def merge_chord_names(self):
@@ -481,8 +483,8 @@ class ScorePart(ScoreSection):
         sounding at the same moment."""
         for bar, chord_bar in zip(self.barlist, chord_names.barlist):
             for pos, obj in chord_bar.positions():
-                if obj.harmony:
-                    bar.attach_harmony(obj.harmony, pos)
+                for harmony in obj.harmonies:
+                    bar.attach_harmony(harmony, pos)
 
     def extract_global_to_section(self, name):
         """Extract only elements that is relevant for the score globally into a given section."""
@@ -556,12 +558,12 @@ class Bar():
         to the note sounding at pos."""
         for start, obj in self.positions():
             if start == pos:
-                obj.harmony = harmony
+                obj.harmonies.append(harmony)
                 return
         for start, obj in self.positions():
             if start < pos < start + obj.length():
                 harmony.offset = pos - start
-                obj.harmony = harmony
+                obj.harmonies.append(harmony)
                 return
         print("Warning: no note to attach chord name to!")
 
@@ -658,7 +660,7 @@ class BarMus():
         self.other_notation = None
         self.dynamic = []
         self.oct_shift = None
-        self.harmony = None
+        self.harmonies = []
 
     def __repr__(self):
         return '<{0} {1}>'.format(self.__class__.__name__, self.duration)
@@ -685,6 +687,7 @@ class BarMus():
                        for t in self.tuplet]
         cont.other_notation = None
         cont.dynamic = []
+        cont.harmonies = []
         cont.oct_shift = None
         return cont
 

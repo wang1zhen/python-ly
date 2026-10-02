@@ -3,8 +3,6 @@ import pytest
 
 from .musicxml_helpers import convert, measure_lengths, measures, parts, validate
 
-xfail = pytest.mark.xfail(strict=True, reason="chord mode is not implemented")
-
 
 def harmony(el):
     """Return (root, alter, kind, bass) of a harmony element."""

@@ -3,8 +3,6 @@ import pytest
 
 from .musicxml_helpers import convert, measure_lengths, measures, notes, parts, pitch, pitches, validate
 
-xfail = pytest.mark.xfail(strict=True, reason=r"\partCombine is not implemented")
-
 
 @pytest.mark.parametrize('command', [r'\partCombine', r'\partcombine'])
 def test_part_combine_two_voices(command):

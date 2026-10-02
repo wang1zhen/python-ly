@@ -794,15 +794,17 @@ class Mediator():
         """A note in chord mode, written as a chord name (harmony) on an
         invisible rest."""
         kind, degrees = chord.kind()
+        root = self.transpose(chord.root)
         bass = chord.bass_pitch()
         if bass:
+            bass = self.transpose(bass)
             bass = (getNoteName(bass.note), get_xml_alter(bass.alter))
         self.current_is_rest = True
         self.clear_chord()
         self.current_note = xml_objs.BarRest(note.duration, self.voice, invisible=True)
-        self.current_note.harmony = xml_objs.Harmony(
-            getNoteName(chord.root.note), get_xml_alter(chord.root.alter),
-            kind, bass, degrees)
+        self.current_note.harmonies = [xml_objs.Harmony(
+            getNoteName(root.note), get_xml_alter(root.alter),
+            kind, bass, degrees)]
         self.check_current_note(rest=True)
 
     def copy_prev_chord(self, duration):
