@@ -314,6 +314,11 @@ class ParseSource():
         if drumnote.length():
             self.mediator.new_note(drumnote, is_unpitched=True)
             self.check_note(drumnote)
+        elif isinstance(drumnote.parent(), ly.music.items.Chord):
+            chord_base = not self.mediator.current_chord
+            self.mediator.new_drum_chordnote(drumnote.parent().duration)
+            if chord_base:
+                self.check_tuplet()
 
     def check_note(self, note):
         """Generic check for all notes, both pitched and unpitched."""

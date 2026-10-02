@@ -55,12 +55,17 @@ CORPUS = {
     'with_block': r"""\new Staff \with { instrumentName = "Flute" shortInstrumentName = "Fl." } { c''1 }""",
     'transposed_instrument': r"""\new Staff { \transposition bes c''1 }""",
     'empty_chord': r"""{ <>\p c'4 d' e' f' }""",
+    'header_full': r"""\header { title = "T" subtitle = "S" composer = "C" arranger = "A" poet = "P" lyricist = "L" opus = "Op. 1" dedication = "D" piece = "Piece" instrument = "Flute" meter = "Allegro" copyright = "CC" tagline = "tag" } { c'1 }""",
+    'score_header': r"""\score { { c'1 } \header { piece = "Nr. 1" } }""",
+    'book_header': r"""\book { \header { title = "B" composer = "C" } \score { { c'1 } } }""",
+    'drums_voices': r"""\new DrumStaff << \drummode { \voiceOne hh8 hh hh hh hh hh hh hh } \\ \drummode { \voiceTwo bd4 sn bd sn } >>""",
+    'drums_rhythms': r"""\new DrumStaff \drummode { bd4. sn8 \tuplet 3/2 { bd8 sn sn } r4 | cymc2~ cymc2 }""",
+    'drums_chords': r"""\new DrumStaff \drummode { <bd hh>4 <sn hh>8 <sn hh> <bd hh>2 }""",
+    'drums_grace_artic': r"""\drums { \grace sn16 bd4-> sn-. sn\p sn }""",
 }
 
 # known bugs outside the planned improvements
 KNOWN_INVALID = {
-    'header': 'creator is written after encoding in identification',
-    'drums': 'voice element comes after type in unpitched notes',
 }
 
 

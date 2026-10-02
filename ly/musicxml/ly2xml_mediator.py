@@ -599,6 +599,22 @@ class Mediator():
         self.bar.add(chord_note)
         return chord_note
 
+    def new_drum_chordnote(self, duration):
+        """A note of a chord in drum mode; the first one is the chord base."""
+        if self.current_chord:
+            chord_note = xml_objs.Unpitched(self.current_note.duration)
+            chord_note.set_durtype(self.current_note.type)
+            chord_note.dot = self.current_note.dot
+            chord_note.tuplet = self.current_note.tuplet
+            chord_note.chord = True
+            self.bar.add(chord_note)
+        else:
+            self.current_note = chord_note = xml_objs.Unpitched(duration)
+            self.check_current_note(is_unpitched=True)
+            self.increase_bar_dura(duration)
+        self.current_chord.append(chord_note)
+        self.do_action_onnext(chord_note)
+
     def copy_prev_chord(self, duration):
         if self.current_chord:
             prev_chord = self.current_chord
