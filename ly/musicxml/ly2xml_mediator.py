@@ -31,6 +31,7 @@ from fractions import Fraction
 import ly.duration
 import ly.music.items
 import ly.pitch
+import ly.pitch.transpose
 
 from . import xml_objs
 
@@ -95,6 +96,7 @@ class Mediator():
         self.grace = None
         self.prev_bar = None
         self.after_grace_bar = None
+        self.transposers = []
 
     def new_header_assignment(self, name, value):
         """Distributing header information."""
@@ -530,6 +532,24 @@ class Mediator():
             else:
                 self.current_attr.set_clef(self.clef)
 
+    def push_transposition(self, from_pitch, to_pitch):
+        r"""Start transposing the pitches of new notes and keys (\transpose)."""
+        self.transposers.append(
+            ly.pitch.transpose.Transposer(from_pitch, to_pitch))
+
+    def pop_transposition(self):
+        self.transposers.pop()
+
+    def transpose(self, pitch):
+        """Return a copy of pitch transposed by all current transpositions.
+
+        The innermost transposition is applied first.
+        """
+        p = pitch.copy()
+        for t in reversed(self.transposers):
+            t.transpose(p)
+        return p
+
     def set_relative(self, note):
         self.prev_pitch = note.pitch
 
@@ -620,8 +640,9 @@ class Mediator():
 
     def create_barnote_from_note(self, note):
         """Create a xml_objs.BarNote from ly.music.items.Note."""
-        p = getNoteName(note.pitch.note)
-        alt = get_xml_alter(note.pitch.alter)
+        pitch = self.transpose(note.pitch)
+        p = getNoteName(pitch.note)
+        alt = get_xml_alter(pitch.alter)
         try:
             acc = note.accidental_token
         except AttributeError:
@@ -680,7 +701,7 @@ class Mediator():
 
     def set_octave(self, relative):
         """Set octave by getting the octave of an absolute note + 3."""
-        p = self.current_lynote.pitch.copy()
+        p = self.transpose(self.current_lynote.pitch)
         if relative:
             p.makeAbsolute(self.prev_pitch)
         self.prev_pitch = p
@@ -735,7 +756,7 @@ class Mediator():
         chord_note.tuplet = self.current_note.tuplet
         if not self.prev_chord_pitch:
             self.prev_chord_pitch = self.prev_pitch
-        p = note.pitch.copy()
+        p = self.transpose(note.pitch)
         if(rel):
             p.makeAbsolute(self.prev_chord_pitch)
         chord_note.set_octave(p.octave + 3)

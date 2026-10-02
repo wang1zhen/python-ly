@@ -34,6 +34,7 @@ from fractions import Fraction
 
 import ly.document
 import ly.music
+import ly.pitch
 
 from . import chords
 from . import create_musicxml
@@ -325,11 +326,18 @@ class ParseSource():
         self.mediator.new_clef(clef.specifier())
 
     def KeySignature(self, key):
-        self.mediator.new_key(key.pitch().output(), key.mode())
+        pitch = self.mediator.transpose(key.pitch())
+        # only the pitch name, transposing can change the octave of the key
+        key_name = ly.pitch.pitchWriter('nederlands')(pitch.note, pitch.alter)
+        self.mediator.new_key(key_name, key.mode())
 
     def Relative(self, relative):
         r"""A \relative music expression."""
         self.relative = True
+
+    def Transpose(self, transpose):
+        r"""A \transpose music expression."""
+        self.mediator.push_transposition(transpose[0].pitch, transpose[1].pitch)
 
     def Partial(self, partial):
         self.mediator.set_pickup(partial.partial_length())
@@ -837,6 +845,8 @@ class ParseSource():
             self.with_contxt = None
         elif end.node.token == '\\drums':
             self.mediator.check_part()
+        elif isinstance(end.node, ly.music.items.Transpose):
+            self.mediator.pop_transposition()
         elif isinstance(end.node, ly.music.items.Relative):
             self.relative = False
             self.rel_pitch_isset = False
