@@ -850,7 +850,7 @@ class Reader(object):
             break
         return item
     
-    @_commands('\\partcombine')
+    @_commands('\\partcombine', '\\partCombine')
     def handle_partcombine(self, t, source=None):
         item = self.factory(PartCombine, t)
         item.extend(itertools.islice(self.read(), 2))
