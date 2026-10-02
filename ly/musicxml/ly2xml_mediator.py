@@ -418,13 +418,49 @@ class Mediator():
         self.bar.add(barline)
         self.new_bar()
 
-    def new_repeat(self, rep):
+    def ended_bar(self):
+        """Return the bar in which the music read so far ends.
+
+        That is the current bar, unless it was just started by the last note
+        filling up the previous one.
+        """
+        if self.bar.has_music():
+            return self.bar
+        return self.insert_into.barlist[-2]
+
+    def new_repeat(self, rep, times=None):
+        """A forward repeat is set on the left barline of the current bar,
+        a backward repeat on the right barline of the bar that just ended."""
         barline = xml_objs.BarAttr()
         barline.set_barline(rep)
         barline.repeat = rep
-        if self.bar is None:
-            self.new_bar()
-        self.bar.add(barline)
+        if rep == 'forward':
+            barline.location = 'left'
+            self.add_to_bar(barline)
+        else:
+            barline.repeat_times = times
+            self.ended_bar().add(barline)
+
+    def start_ending(self, number):
+        """Start an alternative ending (volta bracket) on the current bar."""
+        barline = xml_objs.BarAttr()
+        barline.location = 'left'
+        barline.ending = (number, 'start')
+        self.add_to_bar(barline)
+
+    def stop_ending(self, number, times=None):
+        """Stop an alternative ending, followed by a backward repeat
+        played the given number of times. Without times the ending is the
+        last one and its bracket is left open."""
+        barline = xml_objs.BarAttr()
+        if times:
+            barline.set_barline('backward')
+            barline.repeat = 'backward'
+            barline.repeat_times = times
+            barline.ending = (number, 'stop')
+        else:
+            barline.ending = (number, 'discontinue')
+        self.ended_bar().add(barline)
 
     def new_key(self, key_name, mode):
         if self.bar is None:
