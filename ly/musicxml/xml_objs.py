@@ -381,31 +381,6 @@ class ScoreSection():
         if len(voice.barlist) > bl_len:
             self.barlist += voice.barlist[bl_len:]
 
-    def merge_lyrics(self, lyrics):
-        """Merge in lyrics in music section."""
-        i = 0
-        ext = False
-        for bar in self.barlist:
-            for obj in bar.obj_list:
-                # a note tied to the previous one gets no syllable
-                if isinstance(obj, BarNote) and 'stop' not in obj.tie:
-                    if ext:
-                        if obj.slur:
-                            ext = False
-                    else:
-                        try:
-                            l = lyrics.barlist[i]
-                        except IndexError:
-                            break
-                        if l != 'skip':
-                            try:
-                                if l[3] == "extend" and obj.slur:
-                                    ext = True
-                            except IndexError:
-                                pass
-                            obj.add_lyric(l)
-                        i += 1
-
 
 class Snippet(ScoreSection):
     """ Short section intended to be merged.
@@ -421,6 +396,28 @@ class LyricsSection(ScoreSection):
     def __init__(self, name, voice_id):
         ScoreSection.__init__(self, name)
         self.voice_id = voice_id
+
+    def attach_to(self, notes):
+        """Give the syllables to the notes like LilyPond's \\lyricsto does.
+
+        Chord notes and melismata (notes tied from the previous note and the
+        notes of a slur after its first note) get no syllable.
+        """
+        syllables = iter(self.barlist)
+        slurs = 0
+        for note in notes:
+            if note.chord:
+                continue
+            melisma = slurs or 'stop' in note.tie
+            for s in note.slur:
+                if not s.phrasing:
+                    slurs += 1 if s.slurtype == 'start' else -1
+            if not melisma:
+                l = next(syllables, None)
+                if l is None:
+                    break
+                if l != 'skip':
+                    note.add_lyric(l)
 
 
 class ScorePart(ScoreSection):
