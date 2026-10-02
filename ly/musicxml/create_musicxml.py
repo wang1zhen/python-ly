@@ -206,9 +206,11 @@ class CreateMusicXML():
         self.add_notations()
         self.add_tied(tie_type)
 
-    def new_rest(self, duration, durtype, pos, dot, voice):
+    def new_rest(self, duration, durtype, pos, dot, voice, invisible=False):
         """Create all nodes needed for a rest. """
         self.create_note()
+        if invisible:
+            self.current_note.set("print-object", "no")
         if pos:
             self.add_rest_w_pos(pos[0], pos[1])
         else:
@@ -623,6 +625,28 @@ class CreateMusicXML():
         direction = etree.SubElement(self.current_bar, "direction", placement=plac)
         dirtypenode = etree.SubElement(direction, "direction-type")
         dyn_node = etree.SubElement(dirtypenode, "octave-shift", oct_dict)
+
+    def add_harmony(self, root, root_alter, kind, bass=None, degrees=(), offset=0):
+        """Add a chord symbol. Bass is a (step, alter) tuple, degrees are
+        (value, alter, type) tuples."""
+        harmony = etree.SubElement(self.current_bar, "harmony")
+        rootnode = etree.SubElement(harmony, "root")
+        etree.SubElement(rootnode, "root-step").text = root
+        if root_alter:
+            etree.SubElement(rootnode, "root-alter").text = str(root_alter)
+        etree.SubElement(harmony, "kind").text = kind
+        if bass:
+            bassnode = etree.SubElement(harmony, "bass")
+            etree.SubElement(bassnode, "bass-step").text = bass[0]
+            if bass[1]:
+                etree.SubElement(bassnode, "bass-alter").text = str(bass[1])
+        for value, alter, degree_type in degrees:
+            degreenode = etree.SubElement(harmony, "degree")
+            etree.SubElement(degreenode, "degree-value").text = str(value)
+            etree.SubElement(degreenode, "degree-alter").text = str(alter)
+            etree.SubElement(degreenode, "degree-type").text = degree_type
+        if offset:
+            etree.SubElement(harmony, "offset").text = str(offset)
 
     def add_dirwords(self, words):
         """Add words in direction, e. g. a tempo mark."""

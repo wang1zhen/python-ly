@@ -29,6 +29,7 @@ from __future__ import division
 from fractions import Fraction
 
 import ly.duration
+import ly.music.items
 import ly.pitch
 
 from . import xml_objs
@@ -156,11 +157,12 @@ class Mediator():
     def change_group_bracket(self, system_start):
         self.group.set_bracket(get_group_symbol(system_start))
 
-    def new_part(self, pid=None, to_part=None, piano=False):
+    def new_part(self, pid=None, to_part=None, piano=False, chord_names=False):
         if piano:
             self.part = xml_objs.ScorePart(2, pid, to_part)
         else:
-            self.part = xml_objs.ScorePart(part_id=pid, to_part=to_part)
+            self.part = xml_objs.ScorePart(part_id=pid, to_part=to_part,
+                                           chord_names=chord_names)
         if not to_part:
             if self.group:
                 self.group.partlist.append(self.part)
@@ -323,6 +325,7 @@ class Mediator():
         if self.score.is_empty():
             self.new_part()
             self.part.barlist.extend(self.get_first_var())
+        self.score.merge_chord_names()
         self.score.merge_globally(self.score.glob_section, override=True)
 
     def get_first_var(self):
@@ -706,6 +709,31 @@ class Mediator():
             self.check_current_note(is_unpitched=True)
         self.current_chord.append(chord_note)
         self.do_action_onnext(chord_note)
+
+    def new_chordmode_chord(self, note, chord):
+        """A note in chord mode, written as the notes of the
+        ly.musicxml.chords.Chord."""
+        self.clear_chord()
+        for i, pitch in enumerate(chord.pitches()):
+            chord_note = ly.music.items.Note()
+            chord_note.pitch = pitch
+            self.new_chord(chord_note, note.duration, chord_base=not i)
+        self.chord_end()
+
+    def new_harmony(self, note, chord):
+        """A note in chord mode, written as a chord name (harmony) on an
+        invisible rest."""
+        kind, degrees = chord.kind()
+        bass = chord.bass_pitch()
+        if bass:
+            bass = (getNoteName(bass.note), get_xml_alter(bass.alter))
+        self.current_is_rest = True
+        self.clear_chord()
+        self.current_note = xml_objs.BarRest(note.duration, self.voice, invisible=True)
+        self.current_note.harmony = xml_objs.Harmony(
+            getNoteName(chord.root.note), get_xml_alter(chord.root.alter),
+            kind, bass, degrees)
+        self.check_current_note(rest=True)
 
     def copy_prev_chord(self, duration):
         if self.current_chord:

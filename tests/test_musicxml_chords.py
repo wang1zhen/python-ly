@@ -33,7 +33,6 @@ def chords_per_measure(root, part=0):
     return result
 
 
-@xfail
 @pytest.mark.parametrize('chord, expected', [
     ('c1', ('C', 0, 'major', None)),
     ('c1:m', ('C', 0, 'minor', None)),
@@ -59,7 +58,6 @@ def test_chord_name_kind(chord, expected):
     validate(root)
 
 
-@xfail
 def test_chord_names_part_timing():
     root = convert(r"\chords { c2 g2:7 f1 }")
     m = measures(root)
@@ -68,7 +66,6 @@ def test_chord_names_part_timing():
     validate(root)
 
 
-@xfail
 @pytest.mark.parametrize('chord_names', [
     r"\new ChordNames \chordmode { c2 g2:7 f1 }",
     r"\chords { c2 g2:7 f1 }",
@@ -86,7 +83,6 @@ def test_chord_names_attach_to_staff(chord_names):
     validate(root)
 
 
-@xfail
 def test_chordmode_in_staff_gives_notes():
     root = convert(r"\new Staff \chordmode { c1 g:7 a:m/c }")
     assert chords_per_measure(root) == [
@@ -104,7 +100,6 @@ def degrees(el):
              d.findtext('degree-type')) for d in el.findall('degree')]
 
 
-@xfail
 @pytest.mark.parametrize('chord, kind', [
     ('c1:m6', 'minor-sixth'),
     ('c1:maj9', 'major-ninth'),
@@ -123,7 +118,6 @@ def test_more_chord_kinds(chord, kind):
     assert degrees(h) == []
 
 
-@xfail
 @pytest.mark.parametrize('chord, kind, expected', [
     ('c1:7^5', 'dominant', [(5, 0, 'subtract')]),
     ('c1:5.9', 'major', [(9, 0, 'add')]),
@@ -137,7 +131,6 @@ def test_chord_degrees(chord, kind, expected):
     validate(root)
 
 
-@xfail
 def test_chord_names_with_rests():
     root = convert(r"\chords { c2 r2 g1:7 }")
     assert [len(m.findall('harmony')) for m in measures(root)] == [1, 1]
@@ -145,7 +138,6 @@ def test_chord_names_with_rests():
     validate(root)
 
 
-@xfail
 def test_chordmode_notes():
     root = convert(r"\new Staff \chordmode { c2:m7 c2/+g f1:maj7 }")
     assert chords_per_measure(root) == [
@@ -154,7 +146,6 @@ def test_chordmode_notes():
     ]
 
 
-@xfail
 def test_chord_names_attach_to_the_staff_below():
     root = convert(r"""\score { <<
   \chords { c1 g1:7 }
@@ -167,7 +158,6 @@ def test_chord_names_attach_to_the_staff_below():
     validate(root)
 
 
-@xfail
 def test_chord_names_in_three_four():
     root = convert(r"""\score { <<
   \new ChordNames \chordmode { \time 3/4 c2. g2.:7 }

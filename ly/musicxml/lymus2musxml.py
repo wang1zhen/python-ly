@@ -34,6 +34,7 @@ from fractions import Fraction
 import ly.document
 import ly.music
 
+from . import chords
 from . import create_musicxml
 from . import ly2xml_mediator
 from . import xml_objs
@@ -87,6 +88,7 @@ class ParseSource():
         self.tupl_span = False
         self.unset_tuplspan = False
         self.alt_mode = None
+        self.chord_names = False
         self.rel_pitch_isset = False
         self.slurcount = 0
         self.slurnr = 0
@@ -271,6 +273,9 @@ class ParseSource():
                 self.mediator.new_section('voice')
         elif context == 'Devnull':
             self.mediator.new_section('devnull', True)
+        elif context == 'ChordNames':
+            self.mediator.new_part(context_id, chord_names=True)
+            self.chord_names = True
         else:
             print("Context not implemented:", context)
 
@@ -307,7 +312,9 @@ class ParseSource():
         """ notename, e.g. c, cis, a bes ... """
         #print(note.token)
         if note.length():
-            if self.relative and not self.rel_pitch_isset:
+            if self.alt_mode == 'chord':
+                self.chordmode_note(note)
+            elif self.relative and not self.rel_pitch_isset:
                 self.mediator.new_note(note, False)
                 self.mediator.set_relative(note)
                 self.rel_pitch_isset = True
@@ -324,6 +331,26 @@ class ParseSource():
                 else:
                     self.mediator.new_chord(note, note.parent().duration, self.relative)
                     self.check_tuplet()
+
+    def chordmode_note(self, note):
+        """A note in chord mode, with the ChordSpecifier following it."""
+        spec = self.get_next_node(note)
+        if not isinstance(spec, ly.music.items.ChordSpecifier):
+            spec = None
+        chord = chords.Chord(note.pitch, spec)
+        if self.chord_names:
+            self.mediator.new_harmony(note, chord)
+        else:
+            self.mediator.new_chordmode_chord(note, chord)
+        self.check_note(note)
+
+    def ChordSpecifier(self, specifier):
+        """Read with the note before it."""
+        pass
+
+    def ChordItem(self, item):
+        """Read with the note before it."""
+        pass
 
     def Unpitched(self, unpitched):
         """A note without pitch, just a standalone duration.
@@ -614,7 +641,13 @@ class ParseSource():
         self.alt_mode = 'note'
 
     def ChordMode(self, chordmode):
-        r"""A \chordmode or \chords expression."""
+        r"""A \chordmode or \chords expression.
+
+        If the shorthand form \chords is found, ChordNames is implicit.
+
+        """
+        if chordmode.token == '\\chords':
+            self.check_context('ChordNames')
         self.alt_mode = 'chord'
 
     def DrumMode(self, drummode):
@@ -711,6 +744,12 @@ class ParseSource():
                 self.mediator.set_voicenr(nr=1)
             elif end.node.context() == 'Devnull':
                 self.mediator.check_voices()
+            elif end.node.context() == 'ChordNames':
+                self.end_chord_names()
+        elif isinstance(end.node, ly.music.items.ChordMode):
+            self.alt_mode = None
+            if end.node.token == '\\chords':
+                self.end_chord_names()
         elif end.node.token == '<<':
             self.mediator.end_simultaneous()
             if self.voice_sep:
@@ -743,6 +782,10 @@ class ParseSource():
         if isinstance(parent, ly.music.items.MusicList) and parent.token == '<<':
             self.mediator.next_simultaneous()
 
+    def end_chord_names(self):
+        self.chord_names = False
+        self.mediator.check_part()
+
     ##
     # Additional node manipulation
     ##
@@ -756,6 +799,14 @@ class ParseSource():
             return parent[i-1]
         else:
             return False
+
+    def get_next_node(self, node):
+        """ Returns the nodes next node
+        or None if the node is last in its branch. """
+        parent = node.parent()
+        i = parent.index(node)
+        if i + 1 < len(parent):
+            return parent[i+1]
 
     def simple_node_gen(self, node):
         """Unlike iter_score are the subnodes yielded without substitution."""
