@@ -558,12 +558,17 @@ class CreateMusicXML():
     def new_system(self, force_break):
         etree.SubElement(self.current_bar, "print", {'new-system':force_break})
 
-    def add_barline(self, bl_type, repeat=None):
-        barnode = etree.SubElement(self.current_bar, "barline", location="right")
-        barstyle = etree.SubElement(barnode, "bar-style")
-        barstyle.text = bl_type
+    def add_barline(self, bl_type, location="right", ending=None, repeat=None, times=None):
+        barnode = etree.SubElement(self.current_bar, "barline", location=location)
+        if bl_type:
+            barstyle = etree.SubElement(barnode, "bar-style")
+            barstyle.text = bl_type
+        if ending:
+            etree.SubElement(barnode, "ending", number=ending[0], type=ending[1])
         if repeat:
             repeatnode = etree.SubElement(barnode, "repeat", direction=repeat)
+            if times:
+                repeatnode.attrib['times'] = str(times)
 
     def add_backup(self, duration):
         if duration <= 0:

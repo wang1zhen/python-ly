@@ -3,8 +3,6 @@ import pytest
 
 from .musicxml_helpers import convert, measures, pitches, validate
 
-xfail = pytest.mark.xfail(strict=True, reason="repeats are incomplete")
-
 
 def barline(measure, location):
     """Return the barline element at location ('left' or 'right') or None."""
@@ -28,7 +26,6 @@ def ending(measure, location):
     return e.get('number'), e.get('type')
 
 
-@xfail
 def test_simple_repeat():
     root = convert(r"{ c'1 \repeat volta 2 { d'1 e'1 } f'1 }")
     m = measures(root)
@@ -40,7 +37,6 @@ def test_simple_repeat():
     validate(root)
 
 
-@xfail
 def test_repeat_at_start():
     root = convert(r"{ \repeat volta 2 { c'1 } d'1 }")
     m = measures(root)
@@ -48,13 +44,11 @@ def test_repeat_at_start():
     assert repeat(m[0], 'right').get('direction') == 'backward'
 
 
-@xfail
 def test_repeat_times():
     root = convert(r"{ \repeat volta 3 { c'1 } }")
     assert repeat(measures(root)[0], 'right').get('times') == '3'
 
 
-@xfail
 @pytest.mark.parametrize('ly_text', [
     r"{ \repeat volta 2 { c'1 } \alternative { { d'1 } { e'1 } } }",
     # LilyPond 2.24 syntax, \alternative inside the repeated music
@@ -76,7 +70,6 @@ def test_alternatives(ly_text):
     validate(root)
 
 
-@xfail
 def test_alternative_numbers_with_more_repeats():
     root = convert(r"{ \repeat volta 3 { c'1 } \alternative { { d'1 } { e'1 } } }")
     m = measures(root)
@@ -85,7 +78,6 @@ def test_alternative_numbers_with_more_repeats():
     assert ending(m[2], 'left') == ('3', 'start')
 
 
-@xfail
 def test_alternative_over_several_measures():
     root = convert(r"{ \repeat volta 2 { c'1 } \alternative { { d'1 d'1 } { e'1 } } f'1 }")
     m = measures(root)
@@ -105,7 +97,6 @@ def test_unfold_repeat():
     assert pitches(root) == ['C4', 'D4', 'C4', 'D4', 'E4']
 
 
-@xfail
 def test_consecutive_repeats():
     root = convert(r"{ \repeat volta 2 { c'1 } \repeat volta 2 { d'1 } }")
     m = measures(root)
@@ -116,7 +107,6 @@ def test_consecutive_repeats():
     validate(root)
 
 
-@xfail
 def test_repeat_of_several_measures_in_three_four():
     root = convert(r"{ \time 3/4 \repeat volta 2 { c'2. d'2. e'2. } }")
     m = measures(root)
@@ -126,7 +116,6 @@ def test_repeat_of_several_measures_in_three_four():
     assert repeat(m[2], 'right').get('direction') == 'backward'
 
 
-@xfail
 def test_repeat_in_every_staff():
     root = convert(r"""\score { <<
   \new Staff { \repeat volta 2 { c''1 } d''1 }
@@ -140,7 +129,6 @@ def test_repeat_in_every_staff():
     validate(root)
 
 
-@xfail
 def test_repeat_in_variable_used_twice():
     root = convert(r"""
 rep = \repeat volta 2 { c'1 }
@@ -153,7 +141,6 @@ rep = \repeat volta 2 { c'1 }
         assert repeat(x, 'right').get('direction') == 'backward'
 
 
-@xfail
 def test_alternatives_with_voices():
     root = convert(r"""\new Staff { \repeat volta 2 { << { c''1 } \\ { a'1 } >> }
   \alternative { { d''1 } { e''1 } } }""")
@@ -164,7 +151,6 @@ def test_alternatives_with_voices():
     validate(root)
 
 
-@xfail
 def test_three_alternatives():
     root = convert(r"{ \repeat volta 3 { c'1 } \alternative { { d'1 } { e'1 } { f'1 } } }")
     m = measures(root)
@@ -174,7 +160,6 @@ def test_three_alternatives():
     validate(root)
 
 
-@xfail
 def test_unfold_repeat_with_alternatives():
     root = convert(r"{ \repeat unfold 2 { c'1 } \alternative { { d'1 } { e'1 } } }")
     assert pitches(root) == ['C4', 'D4', 'C4', 'E4']
@@ -182,7 +167,6 @@ def test_unfold_repeat_with_alternatives():
     assert root.find('.//ending') is None
 
 
-@xfail
 def test_percent_repeat_is_written_out():
     root = convert(r"{ \repeat percent 2 { c'4 d' e' f' } }")
     assert pitches(root) == ['C4', 'D4', 'E4', 'F4'] * 2

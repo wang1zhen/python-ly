@@ -111,6 +111,7 @@ class ParseSource():
         self.mark = False
         self.pickup = False
         self.note_node = None
+        self.alternatives = {}
 
     def parse_text(self, ly_text, filename=None):
         """Parse the LilyPond source specified as text.
@@ -233,6 +234,8 @@ class ParseSource():
             self.mediator.new_simultaneous()
         elif musicList.token == '{':
             self.sims_and_seqs.append('seq')
+            if musicList in self.alternatives:
+                self.mediator.start_ending(self.alternatives[musicList][0])
 
     def Chord(self, chord):
         self.mediator.clear_chord()
@@ -544,6 +547,23 @@ class ParseSource():
         elif repeat.specifier() == 'tremolo':
             self.trem_rep = repeat.repeat_count()
 
+    def Alternative(self, alternative):
+        r"""An \alternative of a volta repeat.
+
+        With N repeats and k alternatives the first alternative is played
+        the first N-k+1 times, the others once each.
+        """
+        repeat = alternative.find_parent(ly.music.items.Repeat)
+        if repeat.specifier() == 'volta':
+            count = repeat.repeat_count()
+            alts = alternative[0]
+            first = count - len(alts) + 1
+            numbers = [', '.join(str(n) for n in range(1, first + 1))]
+            numbers += [str(n) for n in range(first + 1, count + 1)]
+            for alt, number in zip(alts, numbers):
+                times = None if alt is alts[-1] else count
+                self.alternatives[alt] = (number, times)
+
     def Tremolo(self, tremolo):
         """A tremolo item ":"."""
         if self.look_ahead(tremolo, ly.music.items.Duration):
@@ -744,8 +764,9 @@ class ParseSource():
         elif isinstance(end.node, ly.music.items.Grace): #Grace
             self.mediator.end_grace()
         elif end.node.token == '\\repeat':
-            if end.node.specifier() == 'volta':
-                self.mediator.new_repeat('backward')
+            if (end.node.specifier() == 'volta' and
+                    not end.node.find_child(ly.music.items.Alternative, 2)):
+                self.mediator.new_repeat('backward', end.node.repeat_count())
             elif end.node.specifier() == 'tremolo':
                 if self.look_ahead(end.node, ly.music.items.MusicList):
                     self.mediator.set_tremolo(trem_type="stop")
@@ -793,6 +814,8 @@ class ParseSource():
         elif end.node.token == '{':
             if self.sims_and_seqs:
                 self.sims_and_seqs.pop()
+            if end.node in self.alternatives:
+                self.mediator.stop_ending(*self.alternatives.pop(end.node))
         elif end.node.token == '<': #chord
             self.mediator.chord_end()
         elif end.node.token == '\\lyricsto':
@@ -874,7 +897,7 @@ class ParseSource():
 
         Similarly to items.Document.iter_music user commands are substituted.
 
-        Furthermore \repeat unfold expressions are unfolded.
+        Furthermore \repeat unfold and \repeat percent expressions are unfolded.
         """
         return self.iter_nodes(scorenode, doc)
 
@@ -883,25 +906,42 @@ class ParseSource():
         for s in nodes:
             if is_addlyrics(s.next_sibling()) and not is_addlyrics(s):
                 yield LyricsVoice(s)
-            if isinstance(s, ly.music.items.Repeat) and s.specifier() == 'unfold':
-                for u in self.unfold_repeat(s, s.repeat_count(), doc):
+            n = doc.substitute_for_node(s) or s
+            if (isinstance(n, ly.music.items.Repeat) and
+                    n.specifier() in ('unfold', 'percent')):
+                for u in self.unfold_repeat(n, n.repeat_count(), doc):
                     yield u
             else:
-                n = doc.substitute_for_node(s) or s
                 yield n
                 for c in self.iter_score(n, doc):
                     yield c
-                if isinstance(s, ly.music.items.Container):
-                    yield End(s)
+                if isinstance(n, ly.music.items.Container):
+                    yield End(n)
 
     def unfold_repeat(self, repeat_node, repeat_count, doc):
         r"""
         Iter over node which represent a \repeat unfold expression
         and do the unfolding directly.
+
+        As in LilyPond, the repetitions end with the alternatives in turn, the
+        first alternative being used for the first repetitions if there are
+        fewer alternatives than repetitions.
         """
+        alternative = repeat_node.find_child(ly.music.items.Alternative, 2)
+        if alternative:
+            # the \alternative follows the repeated music or (LilyPond 2.24)
+            # is its last item
+            music = [n for n in alternative.parent() if n is not alternative]
+            alts = list(alternative[0])[:repeat_count]
+            alts[0:0] = [alts[0]] * (repeat_count - len(alts))
+        else:
+            music = list(repeat_node)
+            alts = []
         for r in range(repeat_count):
-            for n in repeat_node:
-                for c in self.iter_score(n, doc):
+            for c in self.iter_score(music, doc):
+                yield c
+            if alts:
+                for c in self.iter_score([alts[r]], doc):
                     yield c
 
     def find_score_sub(self, doc):

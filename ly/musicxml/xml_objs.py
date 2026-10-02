@@ -134,10 +134,9 @@ class IterateXmlObjs():
                 obj.divs, obj.multirest)
         if obj.new_system:
             self.musxml.new_system(obj.new_system)
-        if obj.repeat:
-            self.musxml.add_barline(obj.barline, obj.repeat)
-        elif obj.barline:
-            self.musxml.add_barline(obj.barline)
+        if obj.has_barline():
+            self.musxml.add_barline(obj.barline, obj.location, obj.ending,
+                                    obj.repeat, obj.repeat_times)
         if obj.staves:
             self.musxml.add_staves(obj.staves)
         if obj.multiclef:
@@ -498,6 +497,9 @@ class ScorePart(ScoreSection):
                     glob_barattr.mode = obj.mode
                     glob_barattr.barline = obj.barline
                     glob_barattr.repeat = obj.repeat
+                    glob_barattr.repeat_times = obj.repeat_times
+                    glob_barattr.ending = obj.ending
+                    glob_barattr.location = obj.location
                     glob_barattr.tempo = obj.tempo
                     section_bar.obj_list.append(glob_barattr)
             section.barlist.append(section_bar)
@@ -600,11 +602,12 @@ class Bar():
             backup_list = new_voice.obj_list[1:]
         else:
             backup_list = new_voice.obj_list
-        try:
-            if self.obj_list[-1].barline and new_voice.obj_list[-1].barline:
-                self.obj_list.pop()
-        except AttributeError:
-            pass
+        barlines = [obj for obj in backup_list
+                    if isinstance(obj, BarAttr) and obj.has_barline()]
+        backup_list = [obj for obj in backup_list if obj not in barlines]
+        # a barline is added only where the bar doesn't have one yet
+        locations = [obj.location for obj in self.obj_list
+                     if isinstance(obj, BarAttr) and obj.has_barline()]
         if not self.is_skip(backup_list):
             self.create_backup()
 
@@ -637,6 +640,9 @@ class Bar():
 
                             if slur.start_node:
                                 slur.nr = slur.start_node.nr
+        for barline in barlines:
+            if barline.location not in locations:
+                self.add(barline)
 
 class BarMus():
     """ Common class for notes and rests. """
@@ -927,7 +933,10 @@ class BarAttr():
         self.mode = ''
         self.divs = 0
         self.barline = None
+        self.location = 'right'
         self.repeat = None
+        self.repeat_times = None
+        self.ending = None
         self.staves = 0
         self.multiclef = []
         self.tempo = None
@@ -970,6 +979,9 @@ class BarAttr():
         if self.word == None:
             self.word = ''
         self.word += words + ' '
+
+    def has_barline(self):
+        return bool(self.barline or self.ending)
 
     def has_attr(self):
         check = False
