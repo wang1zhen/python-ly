@@ -1,9 +1,6 @@
 """Lyrics in the MusicXML export."""
-import pytest
 
 from .musicxml_helpers import convert, notes, pitch, validate
-
-xfail = pytest.mark.xfail(strict=True, reason="lyrics support is incomplete")
 
 
 def lyrics(root):

@@ -1,10 +1,5 @@
 """The <divisions> value in the MusicXML export."""
-import pytest
-
-
 from .musicxml_helpers import convert, divisions, notes, validate
-
-xfail = pytest.mark.xfail(strict=True, reason="divisions are not minimal")
 
 
 def durations(root):
