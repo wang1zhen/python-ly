@@ -628,9 +628,10 @@ class Reader(object):
         item = self.factory(AfterGrace, t)
         post_events = (Postfix, Tie, Slur, PhrasingSlur, Beam, Dynamic, Articulation)
         items = self.read(source)
-        for i in items:
-            item.append(i)
-            break
+        item.extend(itertools.islice(items, 1))
+        # the main music may be preceded by an optional fraction
+        if len(item) and isinstance(item[0], Number):
+            item.extend(itertools.islice(items, 1))
         # the post-events of the main music come before the grace music
         for i in items:
             item.append(i)

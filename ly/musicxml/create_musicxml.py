@@ -145,11 +145,11 @@ class CreateMusicXML():
     ##
 
     def new_note(self, step, octave, durtype, divdur, alter=0,
-                 acc_token=0, voice=1, dot=0, chord=0, grace=(0, 0), stem_dir=0):
+                 acc_token=0, voice=1, dot=0, chord=0, grace=(0, 0, 0), stem_dir=0):
         """Create all nodes needed for a normal note. """
         self.create_note()
         if grace[0]:
-            self.add_grace(grace[1])
+            self.add_grace(*grace[1:])
         if chord:
             self.add_chord()
         self.add_pitch(step, alter, octave)
@@ -171,11 +171,11 @@ class CreateMusicXML():
             self.set_stem_dir(stem_dir)
 
     def new_unpitched_note(self, step, octave, durtype, divdur, voice=1,
-                            dot=0, chord=0, grace=(0, 0)):
+                            dot=0, chord=0, grace=(0, 0, 0)):
         """Create all nodes needed for an unpitched note. """
         self.create_note()
         if grace[0]:
-            self.add_grace(grace[1])
+            self.add_grace(*grace[1:])
         if chord:
             self.add_chord()
         self.add_unpitched(step, octave)
@@ -384,12 +384,13 @@ class CreateMusicXML():
         tie_element = etree.Element("tie", type=tie_type)
         self.current_note.insert(insert_at, tie_element)
 
-    def add_grace(self, slash):
+    def add_grace(self, slash, steal_time_previous=0):
         """Create grace node """
+        grace = etree.SubElement(self.current_note, "grace")
+        if steal_time_previous:
+            grace.set("steal-time-previous", "{:g}".format(float(steal_time_previous)))
         if slash:
-            etree.SubElement(self.current_note, "grace", slash="yes")
-        else:
-            etree.SubElement(self.current_note, "grace")
+            grace.set("slash", "yes")
 
     def add_notations(self):
         if self.current_notation is None:

@@ -72,7 +72,6 @@ class ParseSource():
         self.relative = False
         self.tuplet = []
         self.scale = ''
-        self.grace_seq = False
         self.trem_rep = 0
         self.piano_staff = 0
         self.numericTime = False
@@ -325,9 +324,6 @@ class ParseSource():
                 else:
                     self.mediator.new_chord(note, note.parent().duration, self.relative)
                     self.check_tuplet()
-                # chord as grace note
-                if self.grace_seq:
-                    self.mediator.new_chord_grace()
 
     def Unpitched(self, unpitched):
         """A note without pitch, just a standalone duration.
@@ -357,8 +353,6 @@ class ParseSource():
         """Generic check for all notes, both pitched and unpitched."""
         self.note_node = note
         self.check_tuplet()
-        if self.grace_seq:
-            self.mediator.new_grace()
         if self.trem_rep and not self.look_ahead(note, ly.music.items.Duration):
             self.mediator.set_tremolo(trem_type='start', repeats=self.trem_rep)
 
@@ -485,7 +479,16 @@ class ParseSource():
         self.mediator.new_dynamics(dynamic.token[1:])
 
     def Grace(self, grace):
-        self.grace_seq = True
+        slash = grace.token in ('\\acciaccatura', '\\slashedGrace')
+        steal = 0
+        if isinstance(grace.parent(), ly.music.items.AfterGrace):
+            # the percentage of the main note's duration taken by the graces
+            steal = (1 - grace.parent().fraction()) * 100
+        self.mediator.start_grace(slash, steal)
+
+    def AfterGrace(self, aftergrace):
+        r"""\afterGrace; the grace notes are handled by Grace."""
+        pass
 
     def TimeSignature(self, timeSign):
         self.mediator.new_time(timeSign.numerator(), timeSign.fraction(), self.numericTime)
@@ -678,7 +681,7 @@ class ParseSource():
             self.tuplet.pop()
             self.fraction = None
         elif isinstance(end.node, ly.music.items.Grace): #Grace
-            self.grace_seq = False
+            self.mediator.end_grace()
         elif end.node.token == '\\repeat':
             if end.node.specifier() == 'volta':
                 self.mediator.new_repeat('backward')

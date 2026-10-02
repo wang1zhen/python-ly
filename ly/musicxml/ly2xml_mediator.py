@@ -89,6 +89,9 @@ class Mediator():
         self.multiple_rest_bar = None
         self.current_mark = 1
         self.stem_dir = None
+        self.grace = None
+        self.prev_bar = None
+        self.after_grace_bar = None
 
     def new_header_assignment(self, name, value):
         """Distributing header information."""
@@ -375,6 +378,7 @@ class Mediator():
         self.moment = max(self.simultaneous.pop()[1], self.moment)
 
     def new_bar(self, fill_prev=True):
+        self.prev_bar = self.bar
         if self.bar and fill_prev:
             self.bar.list_full = True
         self.current_attr = xml_objs.BarAttr()
@@ -530,6 +534,8 @@ class Mediator():
             self.current_note = self.create_barnote_from_note(note)
             self.current_lynote = note
             self.check_current_note(rel)
+        if self.grace:
+            self.current_note.set_grace(*self.grace)
         if self.stem_dir:
             self.current_note.set_stem_direction(self.stem_dir)
         self.do_action_onnext(self.current_note)
@@ -658,6 +664,8 @@ class Mediator():
             self.current_chord.append(self.current_note)
         else:
             self.current_chord.append(self.new_chordnote(note, rel))
+        if self.grace:
+            self.current_chord[-1].set_grace(*self.grace)
         self.do_action_onnext(self.current_chord[-1])
 
     def new_chordbase(self, note, duration, rel=False):
@@ -897,11 +905,20 @@ class Mediator():
         else:
             self.current_note.set_dynamics_mark(dynamics)
 
-    def new_grace(self, slash=0):
-        self.current_note.set_grace(slash)
+    def start_grace(self, slash=0, steal_time_previous=0):
+        """The following notes are grace notes, after-graces if
+        steal_time_previous is set."""
+        self.grace = (slash, steal_time_previous)
+        if steal_time_previous and not self.bar.has_music():
+            # the main note filled its bar, the after-graces belong to its end
+            self.after_grace_bar = self.bar
+            self.bar = self.prev_bar
 
-    def new_chord_grace(self, slash=0):
-        self.current_chord[-1].set_grace(slash)
+    def end_grace(self):
+        self.grace = None
+        if self.after_grace_bar:
+            self.bar = self.after_grace_bar
+            self.after_grace_bar = None
 
     def new_gliss(self, line=None):
         if line:

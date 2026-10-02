@@ -607,7 +607,7 @@ class BarMus():
         self.voice = voice
         self.staff = 0
         self.chord = False
-        self.grace = (0, 0)
+        self.grace = (0, 0, 0)
         self.other_notation = None
         self.dynamic = []
         self.oct_shift = None
@@ -798,8 +798,8 @@ class BarNote(BarMus):
     def add_adv_ornament(self, ornament, end_type="start"):
         self.adv_ornament = (ornament, {"type": end_type})
 
-    def set_grace(self, slash):
-        self.grace = (1, slash)
+    def set_grace(self, slash, steal_time_previous=0):
+        self.grace = (1, slash, steal_time_previous)
 
     def set_gliss(self, line, endtype = "start", nr=1):
         if not line:
