@@ -170,3 +170,29 @@ def test_voices_with_tuplets():
 def test_passing_bar_checks_after_time_change(capsys):
     convert(r"{ \time 3/4 c'2. | \time 2/4 c'2 | c'4 c' | }")
     assert 'bar check' not in capsys.readouterr().out.lower()
+
+
+def words(root, part=0):
+    return [[w.text.strip() for w in m.iter('words')] for m in measures(root, part)]
+
+
+def test_markup_of_note_completing_measure():
+    root = convert(r"""\relative {
+  a'1-\markup intenso |
+  a1^\markup dolce |
+  a2_\markup { poco più forte } a2
+}""")
+    assert words(root) == [['intenso'], ['dolce'], ['poco più forte']]
+    validate(root)
+
+
+def test_markup_of_note_and_mark_in_next_measure():
+    # from #193
+    root = convert(r"""\relative {
+  a'1^\markup intenso |
+  \mark \markup Coda
+  a1 |
+  a1
+}""")
+    assert words(root) == [['intenso'], ['Coda'], []]
+    validate(root)

@@ -157,14 +157,16 @@ class ParseSource():
 
     def leave_note(self, node=None):
         """Complete the current note (or rest or chord) when the node,
-        if given, is not part of it."""
+        if given, is not part of it. The postfix events after a note
+        (-., ^\\markup, ...) are part of it, so that e.g. its markup is in
+        the measure of the note, also when the note completes the measure."""
         if self.note_node:
             n = node.node if isinstance(node, End) else node
             if isinstance(n, ly.music.items.Command) and n.token == '\\rest':
                 # makes the note before it a rest
                 return
             while n:
-                if n is self.note_node:
+                if n is self.note_node or isinstance(n, ly.music.items.Postfix):
                     return
                 n = n.parent()
             self.mediator.end_note()
